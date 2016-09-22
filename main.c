@@ -68,21 +68,26 @@ static void failing_close_mt()
 }
 int main()
 {
+	long num_event;
 	struct timeval tval_before, tval_after, tval_result;
 	gettimeofday(&tval_before, NULL);
 
 #ifdef FAILING_OPEN_ST
+	num_event = NUM_ITER;
 	failing_open();
 #endif
 
 #ifdef FAILING_CLOSE_ST
+	num_event = NUM_ITER;
 	failing_close(0);
 #endif
 
 #ifdef FAILING_OPEN_MT
+	num_event = NUM_ITER*NUM_THREAD;
 	failing_open_mt();
 #endif
 #ifdef FAILING_CLOSE_MT
+	num_event = NUM_ITER*NUM_THREAD;
 	failing_close_mt();
 #endif
 	gettimeofday(&tval_after, NULL);
@@ -90,6 +95,6 @@ int main()
 	long long time_diff = (tval_result.tv_sec*1000000) + tval_result.tv_usec;
 	printf("%lld\n", time_diff);
 	printf("Time elapsed: %lld usec, time per call:%f usec\n",
-	       time_diff, time_diff/(double)NUM_ITER);
+	       time_diff, time_diff/(double)num_event);
 	return 0;
 }
