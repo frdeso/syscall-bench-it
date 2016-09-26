@@ -12,13 +12,14 @@
 long num_iter;
 int num_threads;
 
-static void *failing_open()
+static void *failing_open(void *a)
 {
 	int fd, i;
+	char *path = (char*)a;
 
 	for (i = 0; i < num_iter; i++) {
 		/* Will fail with ENOENT since the file does not exist */
-		fd = open(NULL, O_RDONLY);
+		fd = open(a, O_RDONLY);
 	}
 }
 static void *failing_close(void *a)
@@ -32,7 +33,7 @@ static void *failing_close(void *a)
 	}
 }
 
-static void failing_open_mt(void)
+static void failing_open_mt(char *path)
 {
 	int i, err;
 	void *tret;
@@ -40,7 +41,7 @@ static void failing_open_mt(void)
 
 	tids = calloc(num_threads, sizeof(*tids));
 	for (i = 0; i < num_threads; i++) {
-		err = pthread_create(&tids[i], NULL, failing_open, NULL);
+		err = pthread_create(&tids[i], NULL, failing_open, path);
 	}
 
 	for (i = 0; i < num_threads; i++) {
@@ -74,8 +75,11 @@ int main(int argc, char *argv[])
 
 	gettimeofday(&tval_before, NULL);
 
-#ifdef FAILING_OPEN
-	failing_open_mt();
+#ifdef FAILING_OPEN_NULL
+	failing_open_mt(NULL);
+#endif
+#ifdef FAILING_OPEN_NEXIST
+	failing_open_mt("/path/to/file");
 #endif
 #ifdef FAILING_CLOSE
 	failing_close_mt();
