@@ -13,7 +13,7 @@ run_baseline() {
 	testcase=$1
 	nbThreads=$2
 	nbIter=$3
-	duration=`./$testcase $nbThreads $nbIter`
+	duration=$(./$testcase $nbThreads $nbIter)
 	nb_events=-1
 }
 run_strace() {
@@ -29,17 +29,17 @@ run_lttng() {
 	nbThreads=$2
 	nbIter=$3
 	lttng-sessiond -d
-	lttng create 
+	lttng create
 	lttng enable-channel --num-subbuf 4 --subbuf-size 2M -k my_channel
-	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel 
-	lttng enable-event -k --syscall --all --channel my_channel 
-	lttng start 
+	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
+	lttng enable-event -k --syscall --all --channel my_channel
+	lttng start
 	sleep 2
 	duration=$(./$testcase $nbThreads $nbIter)
-	lttng stop 
+	lttng stop
 	sleep 1
 	nb_events=$(lttng view | wc -l)
-	lttng destroy -a 
+	lttng destroy -a
 	killall lttng-sessiond
 }
 run_sysdig() {
@@ -68,17 +68,17 @@ run_sysdig() {
 }
 
 
-output=./results/results-$ITER-3.csv
+output=./results/results-$ITER-5.csv
 echo 'testcase,tracer,run,iteration,nbthreads,duration,nbevents' > $output
 for nthreads in 1 2 4 8 16; do
-	for tcase in failing-open failing-close; do
+	for tcase in failing-open-null failing-open-nexist failing-close; do
 		for tracer in  baseline strace lttng sysdig; do
 			for i in `seq 1 5`; do
 				run_$tracer $tcase $nthreads $ITER
 				echo $tcase,$tracer,$i,$ITER,$nthreads,$duration,$nb_events >> $output
 				sleep 1
 			done
-		done 
+		done
 	done
 done
 
