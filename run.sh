@@ -11,23 +11,26 @@ nb_events=0
 
 run_baseline() {
 	testcase=$1
-	nbThreads=$2
-	nbIter=$3
-	duration=$(./$testcase $nbThreads $nbIter)
+	cpu_affinity=$2
+	nbThreads=$3
+	nbIter=$4
+	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
 	nb_events=-1
 }
 run_strace() {
 	testcase=$1
-	nbThreads=$2
-	nbIter=$3
-	duration=$(strace -f ./$testcase $nbThreads $nbIter 2> /dev/null)
+	cpu_affinity=$2
+	nbThreads=$3
+	nbIter=$4
+	duration=$(strace -f ./$testcase $cpu_affinity $nbThreads $nbIter 2> /dev/null)
 	nb_events=-1
 }
 
 run_lttng() {
 	testcase=$1
-	nbThreads=$2
-	nbIter=$3
+	cpu_affinity=$2
+	nbThreads=$3
+	nbIter=$4
 	lttng-sessiond -d
 	lttng create
 	lttng enable-channel --num-subbuf 4 --subbuf-size 2M -k my_channel
@@ -35,7 +38,7 @@ run_lttng() {
 	lttng enable-event -k --syscall --all --channel my_channel
 	lttng start
 	sleep 2
-	duration=$(./$testcase $nbThreads $nbIter)
+	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
 	lttng stop
 	sleep 1
 	nb_events=$(lttng view | wc -l)
@@ -44,15 +47,16 @@ run_lttng() {
 }
 run_sysdig() {
 	testcase=$1
-	nbThreads=$2
-	nbIter=$3
+	cpu_affinity=$2
+	nbThreads=$3
+	nbIter=$4
 	tmp=$(mktemp)
 
 	sysdig -w $tmp &
 	#save sysdig's pid
 	p=$!
 	sleep 2
-	duration=$(./$testcase $nbThreads $nbIter)
+	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
 	sleep 1
 
 	# Send sigint to sysdig and wait for it to exit
@@ -68,15 +72,17 @@ run_sysdig() {
 }
 
 
-output=./results/results-$ITER-5.csv
-echo 'testcase,tracer,run,iteration,nbthreads,duration,nbevents' > $output
+output=./results/results-$ITER-7.csv
+echo 'testcase,tracer,run,iteration,cpu_affinity,nbthreads,duration,nbevents' > $output
 for nthreads in 1 2 4 8 16; do
-	for tcase in failing-open-null failing-open-nexist failing-close; do
-		for tracer in  baseline strace lttng sysdig; do
-			for i in `seq 1 5`; do
-				run_$tracer $tcase $nthreads $ITER
-				echo $tcase,$tracer,$i,$ITER,$nthreads,$duration,$nb_events >> $output
-				sleep 1
+	for cpu_affinity in 0 1; do
+		for tcase in failing-open-efault failing-open-enoent failing-close; do
+			for tracer in baseline lttng sysdig; do
+				for i in `seq 1 10`; do
+					run_$tracer $tcase $cpu_affinity $nthreads $ITER
+					echo $tcase,$tracer,$i,$ITER,$nthreads,$duration,$nb_events >> $output
+					sleep 1
+				done
 			done
 		done
 	done
