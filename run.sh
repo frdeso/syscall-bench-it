@@ -77,19 +77,20 @@ run_sysdig() {
 
 	# extract the number of events from the read verbose output
 	sysdig_output=$(sysdig -r $tmp -v 2>&1 >/dev/null)
-	nb_events=$(echo $sysdig_output |grep 'Elapsed'|awk '{print $6}'|sed 's/,//g')
+
+	nb_events=$(echo $sysdig_output |grep 'Elapsed'|awk '{print $10}'|sed 's/,//g')
 	echo $sysdig_output | grep 'Driver'
 	rm $tmp
 }
 
 
-file_output=./results/results-$sleep_time-7.csv
+file_output=./results/results-$sleep_time-8.csv
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents' > $file_output
-for nthreads in 1 2; do
+for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0 1; do
 		for tcase in failing-open-efault failing-open-enoent failing-close; do
-			for tracer in sysdig; do
-				for i in `seq 1 2`; do
+			for tracer in baseline lttng sysdig; do
+				for i in $(seq 1 10); do
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events >> $file_output
 					sleep 1
