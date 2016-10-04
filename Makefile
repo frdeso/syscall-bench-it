@@ -2,12 +2,12 @@ CC=gcc
 CFLAGS=-O3
 LIBS=-pthread
 
-all: failing-open-null failing-open-nexist failing-close
+all: failing-open-efault failing-open-enoent failing-close
 
 
-failing-open-null: main.c
+failing-open-efault: main.c
 	$(CC) $(CFLAGS) $(LIBS) -DFAILING_OPEN_NULL -o $@ $^
-failing-open-nexist: main.c
+failing-open-enoent: main.c
 	$(CC) $(CFLAGS) $(LIBS) -DFAILING_OPEN_NEXIST -o $@ $^
 
 failing-close: main.c
