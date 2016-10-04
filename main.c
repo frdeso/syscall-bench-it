@@ -11,8 +11,8 @@
 #include <unistd.h>
 
 
-
-long num_iter;
+static volatile int test_go;
+unsigned long *tot_nr_iter_per_thread;
 int num_threads;
 int cpu_affinity_enabled;
 
@@ -32,10 +32,12 @@ void set_cpu_affinity(int thread_no)
 
 static void *failing_open_thr(void *a)
 {
-	int fd, i, thread_no;
+	int fd, thread_no;
 	struct thread_arg *arg;
 	char *path;
+	unsigned int nb_iter;
 
+	nb_iter = 0;
 	arg = (struct thread_arg*) a;
 	path = (char*) arg->dat;
 	thread_no = (int) arg->t_no;
@@ -44,18 +46,27 @@ static void *failing_open_thr(void *a)
 		set_cpu_affinity(thread_no);
 	}
 
-	for (i = 0; i < num_iter; i++) {
-		/* Will fail with ENOENT/EFAULT since the file does not exist */
-		fd = open(a, O_RDONLY);
+	while(!test_go) {
+		/* loop until the variable is set by main to start looping */
 	}
+
+	while(test_go) {
+		/* Will fail with ENOENT/EFAULT since the file does not exist */
+		fd = open(path, O_RDONLY);
+		nb_iter++;
+	}
+	tot_nr_iter_per_thread[thread_no] = nb_iter;
+	return (void*)1;
 }
+
 static void *failing_close_thr(void *a)
 {
-	int i, thread_no;
+	int thread_no;
 	int fd = -1;
-
+	unsigned long nb_iter;
 	struct thread_arg *arg;
 
+	nb_iter = 0;
 	arg = (struct thread_arg*) a;
 	thread_no = (int) arg->t_no;
 
@@ -63,80 +74,95 @@ static void *failing_close_thr(void *a)
 		set_cpu_affinity(thread_no);
 	}
 
-	for (i = 0; i < num_iter; i++) {
-		/* will fail with EBADF since the fd is invalid */
+	while(!test_go) {
+		/* loop until the variable is set by main to start looping */
+	}
+
+	while(test_go) {
+		/* Will fail with ENOENT/EFAULT since the file does not exist */
 		close(fd);
+		nb_iter++;
 	}
-}
-
-static void failing_open(char *path)
-{
-	int i, err;
-	void *tret;
-	pthread_t *tids;
-	struct thread_arg arg;
-
-	arg.dat = path;
-
-	tids = calloc(num_threads, sizeof(*tids));
-	for (i = 0; i < num_threads; i++) {
-		arg.t_no = i;
-		err = pthread_create(&tids[i], NULL, failing_open_thr, &arg);
-	}
-
-	for (i = 0; i < num_threads; i++) {
-		err = pthread_join(tids[i], &tret);
-	}
-}
-
-static void failing_close(void)
-{
-	int i, err;
-	void *tret;
-	pthread_t *tids;
-	struct thread_arg arg;
-
-	tids = calloc(num_threads, sizeof(*tids));
-	for (i = 0; i < num_threads; i++) {
-		arg.t_no = i;
-		err = pthread_create(&tids[i], NULL, failing_close_thr, &arg);
-	}
-
-	for (i = 0; i < num_threads; i++) {
-		err = pthread_join(tids[i], &tret);
-	}
+	tot_nr_iter_per_thread[thread_no] = nb_iter;
+	return (void*)1;
 }
 
 int main(int argc, char *argv[])
 {
-	long num_event, time_diff;
+	int i, err, sleep_time;
+	long time_diff;
+	unsigned long total_nr_iter;
+	void * tret;
 	struct timeval tval_before, tval_after, tval_result;
+	struct thread_arg arg;
+	pthread_t *tids;
 
+	test_go = 0;
+	total_nr_iter = 0;
 
 	if (argc != 4) {
-		fprintf(stderr, "Wrong number of arguments. %s cpu_affinity_enabled num_thread num_iter\nExiting...\n", argv[0]);
+		fprintf(stderr, "Wrong number of arguments. %s cpu_affinity_enabled\
+				num_thread sleep_time\nExiting...\n", argv[0]);
 		exit(-1);
 	}
 
 	cpu_affinity_enabled = atoi(argv[1]);
 	num_threads = atoi(argv[2]);
-	num_iter = strtol(argv[3], NULL, 10);
+	sleep_time = strtol(argv[3], NULL, 10);
 
-	gettimeofday(&tval_before, NULL);
+	/* Declare the function pointer that we use to define the testcase */
+	void* (*func)(void*);
 
 #ifdef FAILING_OPEN_NULL
-	failing_open(NULL);
+	arg.dat = NULL;
+	func = &failing_open_thr;
+
 #endif
 #ifdef FAILING_OPEN_NEXIST
-	failing_open("/path/to/file");
+	arg.dat= "/path/to/file";
+	func = &failing_open_thr;
 #endif
 #ifdef FAILING_CLOSE
-	failing_close();
+	func = &failing_close_thr;
 #endif
+
+	tids = calloc(num_threads, sizeof(*tids));
+	tot_nr_iter_per_thread = calloc(num_threads, sizeof(unsigned long));
+
+	for (i = 0; i < num_threads; i++) {
+		arg.t_no = i;
+		err = pthread_create(&tids[i], NULL, func, &arg);
+	}
+
+	/* Wait for all the threads to be ready */
+	sleep(1);
+
+	/* Record the before timestamp */
+	gettimeofday(&tval_before, NULL);
+
+	/* Start the test case and let it run for sleep_time second */
+	test_go = 1;
+	sleep(sleep_time);
+	test_go = 0;
+
+	/* Record the after timestamp */
 	gettimeofday(&tval_after, NULL);
+
+	for (i = 0; i < num_threads; i++) {
+		err = pthread_join(tids[i], &tret);
+		if (err != 0) {
+			exit(-1);
+		}
+		/* Sum the number of iteration for all the threads */
+		total_nr_iter += tot_nr_iter_per_thread[i];
+	}
+
 	timersub(&tval_after, &tval_before, &tval_result);
 	time_diff = (tval_result.tv_sec * 1000000) + tval_result.tv_usec;
 
-	printf("%ld", time_diff);
+	printf("%ld %ld", time_diff, total_nr_iter);
+
+	free(tids);
+	free(tot_nr_iter_per_thread);
 	return 0;
 }

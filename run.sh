@@ -4,25 +4,30 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-ITER=100000
+sleep_time=1
 
 duration=0
+tot_nb_iter=0
 nb_events=0
 
 run_baseline() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
-	nbIter=$4
-	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
+	sleepTime=$4
+	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	duration=$(echo $output | cut -f1 -d ' ')
+	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events=-1
 }
 run_strace() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
-	nbIter=$4
-	duration=$(strace -f ./$testcase $cpu_affinity $nbThreads $nbIter 2> /dev/null)
+	sleepTime=$4
+	output=$(strace -f ./$testcase $cpu_affinity $nbThreads $sleepTime 2> /dev/null)
+	duration=$(echo $output | cut -f1 -d-)
+	tot_nb_iter=$(echo $output | cut -f2 -d-)
 	nb_events=-1
 }
 
@@ -30,7 +35,7 @@ run_lttng() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
-	nbIter=$4
+	sleepTime=$4
 	lttng-sessiond -d
 	lttng create
 	lttng enable-channel --num-subbuf 4 --subbuf-size 2M -k my_channel
@@ -38,7 +43,9 @@ run_lttng() {
 	lttng enable-event -k --syscall --all --channel my_channel
 	lttng start
 	sleep 2
-	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
+	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	duration=$(echo $output | cut -f1 -d-)
+	tot_nb_iter=$(echo $output | cut -f2 -d-)
 	lttng stop
 	sleep 1
 	nb_events=$(lttng view | wc -l)
@@ -49,14 +56,16 @@ run_sysdig() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
-	nbIter=$4
+	sleepTime=$4
 	tmp=$(mktemp)
 
 	sysdig -w $tmp &
 	#save sysdig's pid
 	p=$!
 	sleep 2
-	duration=$(./$testcase $cpu_affinity $nbThreads $nbIter)
+	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	duration=$(echo $output | cut -f1 -d-)
+	tot_nb_iter=$(echo $output | cut -f2 -d-)
 	sleep 1
 
 	# Send sigint to sysdig and wait for it to exit
@@ -72,15 +81,15 @@ run_sysdig() {
 }
 
 
-output=./results/results-$ITER-7.csv
-echo 'testcase,tracer,run,iteration,cpu_affinity,nbthreads,duration,nbevents' > $output
-for nthreads in 1 2 4 8 16; do
-	for cpu_affinity in 0 1; do
+file_output=./results/results-$sleep_time-7.csv
+echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents' > $file_output
+for nthreads in 1 2; do
+	for cpuaffinity in 0 1; do
 		for tcase in failing-open-efault failing-open-enoent failing-close; do
 			for tracer in baseline lttng sysdig; do
-				for i in `seq 1 10`; do
-					run_$tracer $tcase $cpu_affinity $nthreads $ITER
-					echo $tcase,$tracer,$i,$ITER,$nthreads,$duration,$nb_events >> $output
+				for i in `seq 1 2`; do
+					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
+					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events >> $file_output
 					sleep 1
 				done
 			done
