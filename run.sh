@@ -4,7 +4,7 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-sleep_time=1
+sleep_time=500000000
 
 duration=0
 tot_nb_iter=0

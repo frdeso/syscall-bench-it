@@ -8,8 +8,10 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
+#define NSEC_PER_SEC 1000000000
 
 static volatile int test_go;
 unsigned long *tot_nr_iter_per_thread;
@@ -89,11 +91,12 @@ static void *failing_close_thr(void *a)
 
 int main(int argc, char *argv[])
 {
-	int i, err, sleep_time;
-	long time_diff;
+	int i, err;
+	long time_diff, sleep_sec, sleep_nsec, sleep_time;
 	unsigned long total_nr_iter;
 	void * tret;
 	struct timeval tval_before, tval_after, tval_result;
+	struct timespec sleep_duration;
 	struct thread_arg arg;
 	pthread_t *tids;
 
@@ -109,6 +112,12 @@ int main(int argc, char *argv[])
 	cpu_affinity_enabled = atoi(argv[1]);
 	num_threads = atoi(argv[2]);
 	sleep_time = strtol(argv[3], NULL, 10);
+
+	sleep_sec = sleep_time/NSEC_PER_SEC;
+	sleep_nsec = sleep_time - (sleep_sec*NSEC_PER_SEC);
+
+	sleep_duration.tv_sec = sleep_sec;
+	sleep_duration.tv_nsec = sleep_nsec;
 
 	/* Declare the function pointer that we use to define the testcase */
 	void* (*func)(void*);
@@ -142,7 +151,7 @@ int main(int argc, char *argv[])
 
 	/* Start the test case and let it run for sleep_time second */
 	test_go = 1;
-	sleep(sleep_time);
+	nanosleep((const struct timespec*)&sleep_duration, NULL);
 	test_go = 0;
 
 	/* Record the after timestamp */
