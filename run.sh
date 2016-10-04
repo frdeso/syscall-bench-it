@@ -26,8 +26,8 @@ run_strace() {
 	nbThreads=$3
 	sleepTime=$4
 	output=$(strace -f ./$testcase $cpu_affinity $nbThreads $sleepTime 2> /dev/null)
-	duration=$(echo $output | cut -f1 -d-)
-	tot_nb_iter=$(echo $output | cut -f2 -d-)
+	duration=$(echo $output | cut -f1 -d ' ')
+	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events=-1
 }
 
@@ -44,8 +44,8 @@ run_lttng() {
 	lttng start
 	sleep 2
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
-	duration=$(echo $output | cut -f1 -d-)
-	tot_nb_iter=$(echo $output | cut -f2 -d-)
+	duration=$(echo $output | cut -f1 -d ' ')
+	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	lttng stop
 	sleep 1
 	nb_events=$(lttng view | wc -l)
@@ -64,8 +64,8 @@ run_sysdig() {
 	p=$!
 	sleep 2
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
-	duration=$(echo $output | cut -f1 -d-)
-	tot_nb_iter=$(echo $output | cut -f2 -d-)
+	duration=$(echo $output | cut -f1 -d ' ')
+	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	sleep 1
 
 	# Send sigint to sysdig and wait for it to exit
@@ -86,13 +86,14 @@ run_sysdig() {
 
 file_output=./results/results-$sleep_time-8.csv
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents' > $file_output
-for nthreads in 1 2 4 8 16; do
+for nthreads in 1; do
 	for cpuaffinity in 0 1; do
-		for tcase in failing-open-efault failing-open-enoent failing-close; do
-			for tracer in baseline lttng sysdig; do
-				for i in $(seq 1 10); do
+		for tcase in failing-open-enoent; do
+			for tracer in  lttng sysdig; do
+				for i in $(seq 1 3); do
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events >> $file_output
+					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events
 					sleep 1
 				done
 			done
