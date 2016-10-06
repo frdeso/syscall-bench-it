@@ -92,8 +92,9 @@ static void *failing_close_thr(void *a)
 int main(int argc, char *argv[])
 {
 	int i, err;
-	long time_diff, sleep_sec, sleep_nsec, sleep_time;
+	long time_diff, sleep_sec, sleep_nsec;
 	unsigned long total_nr_iter;
+	unsigned long long sleep_time;
 	void * tret;
 	struct timeval tval_before, tval_after, tval_result;
 	struct timespec sleep_duration;
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 
 	cpu_affinity_enabled = atoi(argv[1]);
 	num_threads = atoi(argv[2]);
-	sleep_time = strtol(argv[3], NULL, 10);
+	sleep_time = strtoull(argv[3], NULL, 10);
 
 	sleep_sec = sleep_time/NSEC_PER_SEC;
 	sleep_nsec = sleep_time - (sleep_sec*NSEC_PER_SEC);
