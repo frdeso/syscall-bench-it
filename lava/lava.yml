@@ -22,23 +22,17 @@ install:
                   branch: master
         deps:
                 - bsdtar
+                - psmisc
                 - wget
                 - python3
+                - python3-pip
         steps:
-                - wget --no-check-certificate $URCU_ARCHIVE -O urcu.zip
-                - wget --no-check-certificate $UST_ARCHIVE -O ust.zip
-                - wget --no-check-certificate $TOOLS_ARCHIVE -O tools.zip
-                - wget --no-check-certificate $BABELTRACE_ARCHIVE -O babeltrace.zip
-                - for f in *.zip ; do bsdtar --strip-components 2 -xvzf $f -C /usr; done
-                - chmod +x /usr/bin/lttng*
-                - chmod +x /usr/bin/babeltrace
-                - chmod +x /usr/lib/lttng/libexec/lttng-consumerd
+                - pip3 install vlttng
+                - vlttng -p all-master -i tracecompass /tmp/virtenv
+
 run:
         steps:
-                - export LTTNG_SESSION_CONFIG_XSD_PATH
-                - export LTTNG_CONSUMERD32_BIN
-                - export LTTNG_CONSUMERD64_BIN
-                - export PYTHONPATH
+                - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
                 - ulimit -c unlimited
                 - mkdir coredump
