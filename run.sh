@@ -123,11 +123,11 @@ drop_caches() {
 
 file_output=./results.csv
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
-for nthreads in 1; do
+for nthreads in 1 2; do
 	for cpuaffinity in 0; do
 		for tcase in failing-open-enoent failing-open-efault failing-close; do
 			for tracer in  baseline lttng  ; do
-				for i in $(seq 1 1); do
+				for i in $(seq 1 2); do
 					drop_caches
 
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time

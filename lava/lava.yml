@@ -29,6 +29,8 @@ install:
                 - libffi-dev
                 - libmount-dev
                 - libxml2
+                - python3-pandas
+                - python3-numpy
         steps:
                 - pip3 install vlttng
                 - vlttng -p benchmarks/lava/benchmark-profile.yml /tmp/virtenv
@@ -44,6 +46,7 @@ run:
                 - lava-test-case build-benchmarks --shell "make"
                 - lava-test-case run-benchmarks --shell "./run.sh"
                 - lava-test-case-attach run-benchmarks "./results.csv"
+                - lava-test-case run-benchmarks --shell "python3 ./lava/parse-results.py ./results.csv"
                 - cd -
                 - tar czf coredump.tar.gz coredump
                 - lava-test-case-attach run-benchmarks coredump.tar.gz
