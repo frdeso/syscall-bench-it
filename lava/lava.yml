@@ -28,7 +28,7 @@ install:
                 - python3-pip
         steps:
                 - pip3 install vlttng
-                - vlttng -p all-master -i tracecompass /tmp/virtenv
+                - vlttng -p benchmarks/lava/benchmark-profile.yml /tmp/virtenv
 
 run:
         steps:
