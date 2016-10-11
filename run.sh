@@ -4,21 +4,43 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-sleep_time=5000000000
+sleep_time=2000000000
 
 duration=0
 tot_nb_iter=0
 nb_events=0
 max_mem=0
+tracker_pid=0
+discard_events=0
+run_mem_tracker=0
 
 MEM_USAGE_FILE=./results/mem-tmp.csv
+
+start_mem_tracker() {
+	cp /dev/null $MEM_USAGE_FILE
+	#top -b  | grep 'KiB Swap' | awk '{print $9}' >> $MEM_USAGE_FILE &
+	bash -c "while true; do cat /proc/meminfo | grep -E '^Cached:'|awk '{print \$2}' >> $MEM_USAGE_FILE; sleep 1; done" &
+	tracker_pid=$!
+}
+
+update_max_mem_usage() {
+	kill -9 $tracker_pid
+	wait $tracker_pid
+
+	max_mem=0
+	for tmp in $(cat $MEM_USAGE_FILE); do
+		(($tmp > $max_mem)) && max_mem=$tmp
+	done
+}
 
 run_baseline() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
+	start_mem_tracker
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events=-1
@@ -28,7 +50,9 @@ run_strace() {
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
+	start_mem_tracker
 	output=$(strace -f ./$testcase $cpu_affinity $nbThreads $sleepTime 2> /dev/null)
+	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events=-1
@@ -39,9 +63,11 @@ run_lttng() {
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
+	discard_events=0
+	start_mem_tracker
 	lttng-sessiond -d
-	lttng create
-	lttng enable-channel --num-subbuf 4 --subbuf-size 2M -k my_channel
+	lttng create #--output=$(mktemp -d --tmpdir=/mnt/temp-drive/)
+	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
 	lttng enable-event -k --syscall --all --channel my_channel
 	lttng start
@@ -49,8 +75,9 @@ run_lttng() {
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
-	lttng stop
+	discard_events=$(lttng stop | grep 'warning' | awk '{print $2}')
 	sleep 1
+	update_max_mem_usage
 	nb_events=$(lttng view | wc -l)
 	lttng destroy -a
 	killall lttng-sessiond
@@ -60,9 +87,10 @@ run_sysdig() {
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
-	tmp=$(mktemp)
+	tmp_file=$(mktemp --tmpdir=/root/tmp/)
 
-	sysdig -w $tmp &
+	start_mem_tracker
+	sysdig -w $tmp_file &
 	#save sysdig's pid
 	p=$!
 	sleep 2
@@ -70,6 +98,7 @@ run_sysdig() {
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	sleep 1
+	update_max_mem_usage
 
 	# Send sigint to sysdig and wait for it to exit
 	kill -2 $p
@@ -79,49 +108,36 @@ run_sysdig() {
 	sync
 
 	# extract the number of events from the read verbose output
-	sysdig_output=$(sysdig -r $tmp -v 2>&1 >/dev/null)
+	sysdig_output=$(sysdig -r $tmp_file -v 2>&1 >/dev/null)
 
 	nb_events=$(echo $sysdig_output |grep 'Elapsed'|awk '{print $10}'|sed 's/,//g')
+	discard_events=$(echo $sysdig_output |grep 'Drops' | awk '{print $4}' | cut -f2 -d:)
 	echo $sysdig_output | grep 'Driver'
-	rm $tmp
+	rm $tmp_file
 }
 
 drop_caches() {
-	sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
-}
-start_mem_tracker() {
-	cp /dev/null $MEM_USAGE_FILE
-	nohup watch -n 1 "free | grep 'Mem'| awk '{print \$6}' >> $MEM_USAGE_FILE" &
-}
-
-update_max_mem_usage() {
-	kill -2 $(pidof watch)
-	sleep 1
-	max_mem=0 
-	for i in $(cat $MEM_USAGE_FILE); do
-		(($i > $max_mem)) && max_mem=$i
-	done
+	echo 3 > /proc/sys/vm/drop_caches
 }
 
 
-file_output=./results/results-$sleep_time-8.csv
-echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,maxmem' > $file_output
-for nthreads in 1; do
+file_output=./results/results-$sleep_time-21-5.csv
+echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
+for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0; do
-		for tcase in failing-open-enoent; do
-			for tracer in baseline lttng sysdig; do
-				for i in $(seq 1 3); do
+		for tcase in failing-open-enoent failing-open-efault failing-close; do
+			for tracer in  baseline lttng sysdig ; do
+				for i in $(seq 1 5); do
 					drop_caches
-					start_mem_tracker
-					
+
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
-					update_max_mem_usage
-					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$max_mem >> $file_output
-					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$max_mem
+					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem >> $file_output
+					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem
 					sleep 1
 				done
 			done
 		done
 	done
 done
+sync
 
