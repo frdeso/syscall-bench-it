@@ -14,7 +14,7 @@ tracker_pid=0
 discard_events=0
 run_mem_tracker=0
 
-MEM_USAGE_FILE=./results/mem-tmp.csv
+MEM_USAGE_FILE=$(mktemp)
 
 start_mem_tracker() {
 	cp /dev/null $MEM_USAGE_FILE
