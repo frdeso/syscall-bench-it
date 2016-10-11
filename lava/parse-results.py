@@ -1,4 +1,4 @@
-#! /usr/python
+#! /usr/bin/python3
 from subprocess import call
 import sys
 import numpy as np
@@ -18,33 +18,36 @@ def test_case(df):
     tmp = tmp.merge(mem_mean)
     tmp = tmp.merge(mem_stdev)
 
-    print(tmp)
 
     for i, row in tmp.iterrows():
         testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'pereventmean'])
-        yield( {"name": testcase_name, "result": "pass", "units": "nsec/event", "measurement": row['perevent_mean']})
+        yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
+            "measurement": str(row['perevent_mean'])})
 
         testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'pereventstdev'])
-        yield( {"name": testcase_name, "result": "pass", "units": "nsec/event", "measurement": row['perevent_stdev']})
+        yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
+            "measurement": str(row['perevent_stdev'])})
 
         testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'memmean'])
-        yield( {"name": testcase_name, "result": "pass", "units": "kB", "measurement": row['mem_mean']})
+        yield( {"name": testcase_name, "result": "pass", "units": "kB",
+            "measurement": str(row['mem_mean'])})
 
         testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'memstdev'])
-        yield( {"name": testcase_name, "result": "pass", "units": "kB", "measurement": row['mem_stdev']})
+        yield( {"name": testcase_name, "result": "pass", "units": "kB",
+            "measurement": str(row['mem_stdev'])})
 
 
 def main():
-    results_file=argv[1]
+    results_file=sys.argv[1]
     df = pd.read_csv(results_file)
     data = test_case(df)
     for res in data:
         call(
             ['lava-test-case',
-            data['name'],
-            '--result', data['result'],
-            '--measurement', data['measurement'],
-            '--units', data['units']])
+            res['name'],
+            '--result', res['result'],
+            '--measurement', res['measurement'],
+            '--units', res['units']])
 
 if __name__ == '__main__':
     main()
