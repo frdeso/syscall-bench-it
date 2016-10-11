@@ -121,7 +121,7 @@ drop_caches() {
 }
 
 
-file_output=./results/results-$sleep_time-21-5.csv
+file_output=./results.csv
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
 for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0; do
