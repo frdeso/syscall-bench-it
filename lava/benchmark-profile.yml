@@ -11,12 +11,6 @@ projects:
       --with-pcre=internal --disable-xattr --disable-selinux
       --disable-dtrace --disable-systemtap --disable-gtk-doc
       --disable-man --disable-coverage
-  libxml2:
-    source: 'git://git.gnome.org/libxml2'
-    checkout: master
-    configure: --without-coverage --with-threads --without-python
-    build-env:
-      NOCONFIGURE: '1'
   lttng-tools:
     source: 'git://git.lttng.org/lttng-tools.git'
     configure: --disable-kmod
