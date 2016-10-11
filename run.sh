@@ -66,7 +66,7 @@ run_lttng() {
 	discard_events=0
 	start_mem_tracker
 	lttng-sessiond -d
-	lttng create #--output=$(mktemp -d --tmpdir=/mnt/temp-drive/)
+	lttng create --output=$(mktemp -d --tmpdir=/tmp/)
 	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
 	lttng enable-event -k --syscall --all --channel my_channel
@@ -126,7 +126,7 @@ echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbeve
 for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0; do
 		for tcase in failing-open-enoent failing-open-efault failing-close; do
-			for tracer in  baseline lttng sysdig ; do
+			for tracer in  baseline lttng  ; do
 				for i in $(seq 1 5); do
 					drop_caches
 
