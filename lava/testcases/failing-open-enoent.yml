@@ -1,19 +1,7 @@
 metadata:
         format: Lava-Test Test Definition 1.0
-        name: benchmark-syscall-tracing
-        description: "Perform syscal tracing benchmark"
-
-params:
-        URCU_ARCHIVE: "https://ci.lttng.org/view/Liburcu/job/liburcu_master_build/arch=x86-64,build=std,conf=std/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-        UST_ARCHIVE: "https://ci.lttng.org/view/LTTng-ust/job/lttng-ust_master_build/arch=x86-64,build=std,conf=std,liburcu_version=master/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-        # Require lttng-tools with python bindings
-        TOOLS_ARCHIVE: "https://ci.lttng.org/view/LTTng-tools/job/lttng-tools_master_build/arch=x86-64,babeltrace_version=master,build=std,conf=std,liburcu_version=master/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-        BABELTRACE_ARCHIVE: "https://ci.lttng.org/view/Babeltrace/job/babeltrace_master_build/arch=x86-64,build=std,conf=std/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-        LTTNG_SESSIOND_PATH: /usr/bin
-        LTTNG_SESSION_CONFIG_XSD_PATH: /usr/share/xml/lttng/
-        LTTNG_CONSUMERD32_BIN: /usr/lib/lttng/libexec/lttng-consumerd
-        LTTNG_CONSUMERD64_BIN: /usr/lib/lttng/libexec/lttng-consumerd
-        PYTHONPATH: /usr/lib/python3.4/site-packages/
+        name: benchmark-syscall-failing-open-enoent
+        description: "Perform syscall tracing benchmark of failing open-enoent"
 
 install:
         git-repos:
@@ -44,7 +32,7 @@ run:
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd benchmarks
                 - lava-test-case build-benchmarks --shell "make"
-                - lava-test-case run-benchmarks --shell "./run.sh"
+                - lava-test-case run-benchmarks --shell "./run.sh failing-open-enoent"
                 - lava-test-case-attach run-benchmarks "./results.csv"
                 - lava-test-case run-benchmarks --shell "python3 ./lava/parse-results.py ./results.csv"
                 - cd -

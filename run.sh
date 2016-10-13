@@ -122,11 +122,17 @@ drop_caches() {
 
 
 file_output=./results.csv
+if [ -z ${1+x} ]; then
+	testcase_to_run="failing-open-enoent failing-open-efault failing-close"
+else
+	testcase_to_run=$1
+fi
+
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
 for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0; do
-		for tcase in failing-open-enoent failing-open-efault failing-close; do
-			for tracer in  baseline lttng  ; do
+		for tcase in $(echo $testcase_to_run); do
+			for tracer in  baseline lttng ; do
 				for i in $(seq 1 5); do
 					drop_caches
 
