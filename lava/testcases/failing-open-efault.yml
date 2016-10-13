@@ -21,7 +21,7 @@ install:
                 - python3-numpy
         steps:
                 - pip3 install vlttng
-                - vlttng -p benchmarks/lava/benchmark-profile.yml /tmp/virtenv
+                - vlttng --jobs=16 -p benchmarks/lava/benchmark-profile.yml /tmp/virtenv
 
 run:
         steps:
