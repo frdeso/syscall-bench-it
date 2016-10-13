@@ -127,10 +127,12 @@ int main(int argc, char *argv[])
 	arg.dat = NULL;
 	func = &failing_open_thr;
 #endif
+
 #ifdef FAILING_OPEN_NEXIST
 	arg.dat= "/path/to/file";
 	func = &failing_open_thr;
 #endif
+
 #ifdef FAILING_CLOSE
 	func = &failing_close_thr;
 #endif
