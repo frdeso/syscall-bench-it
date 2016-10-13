@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
 #ifdef FAILING_OPEN_NULL
 	arg.dat = NULL;
 	func = &failing_open_thr;
-
 #endif
 #ifdef FAILING_OPEN_NEXIST
 	arg.dat= "/path/to/file";
