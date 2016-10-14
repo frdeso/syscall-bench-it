@@ -14,7 +14,11 @@ install:
                 - wget
                 - python3
                 - python3-pip
+                - libglib2.0-dev
+                - babeltrace
                 - libffi-dev
+                - elfutils
+                - libelf-dev
                 - libmount-dev
                 - libxml2
                 - python3-pandas
