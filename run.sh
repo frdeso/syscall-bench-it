@@ -129,11 +129,11 @@ else
 fi
 
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
-for nthreads in 1 2 4 8 16; do
+for nthreads in 1 2; do
 	for cpuaffinity in 0; do
 		for tcase in $(echo $testcase_to_run); do
 			for tracer in  baseline lttng ; do
-				for i in $(seq 1 5); do
+				for i in $(seq 1 2); do
 					drop_caches
 
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
