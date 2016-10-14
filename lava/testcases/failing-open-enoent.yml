@@ -13,7 +13,7 @@ run:
                 - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
                 - ulimit -c unlimited
-                - mkdir coredump
+                - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd benchmarks
                 - lava-test-case build-benchmarks --shell "make"
