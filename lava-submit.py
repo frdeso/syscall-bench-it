@@ -89,9 +89,9 @@ job = """
 deploy_action={"command": "deploy_kernel",
             "parameters": {
             		"overlays": [
-            		    "scp://jenkins-lava@storage.internal.efficios.com/storage/jenkins-lava/modules/"+modules ],
+            		    "scp://jenkins-lava@storage.internal.efficios.com/"+modules ],
                 "kernel":
-                "scp://jenkins-lava@storage.internal.efficios.com/storage/jenkins-lava/kernel/zImage/"+kernel,
+                "scp://jenkins-lava@storage.internal.efficios.com/"+kernel,
                 "nfsrootfs": "scp://jenkins-lava@storage.internal.efficios.com/storage/jenkins-lava/rootfs/rootfs_amd64_trusty_2016-02-23-1134.tar.gz",
                 "target_type": "ubuntu"
             }
