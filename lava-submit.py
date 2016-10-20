@@ -112,8 +112,8 @@ setup_action = {
             }
         }
 job_dict= json.loads(job)
-job_dict['actions'].append(deploy_action)
-job_dict['actions'].append(setup_action)
+job_dict['actions'].insert(0, deploy_action)
+job_dict['actions'].insert(4, setup_action)
 
 
 username = 'frdeso'
