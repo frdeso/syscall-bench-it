@@ -119,4 +119,9 @@ username = 'frdeso'
 hostname = 'lava-master.internal.efficios.com'
 server = xmlrpclib.ServerProxy('http://%s:%s@%s/RPC2' % (username, token, hostname))
 
-print server.scheduler.submit_job(json.dumps(job_dict))
+jobid = server.scheduler.submit_job(json.dumps(job_dict))
+
+jobstatus = server.scheduler.job_status(jobid)
+while jobstatus in 'Submitted' or jobstatus in 'Running':
+    sleep(30)
+    jobstatus = server.scheduler.job_status(jobid)
