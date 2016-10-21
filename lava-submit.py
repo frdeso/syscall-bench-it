@@ -19,7 +19,7 @@ tools_commit=sys.argv[4]
 job = """
 {
     "health_check": false,
-    "job_name": "benchmark-syscalls",
+    "job_name": "performance-tracker-benchmark-syscalls",
     "device_type": "x86",
     "tags": [ "dev-sda1" ],
     "timeout": 18000,
