@@ -5,7 +5,6 @@ import json
 import os
 import sys
 
-print(sys.argv)
 if len(sys.argv) != 5:
     print("Must provide four arguments. {} {} {} {} {}".format(sys.argv[0],
         "LAVA_KEY", "kernel_imager", "modules_archive", "tools_commit"))
