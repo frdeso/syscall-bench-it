@@ -124,6 +124,6 @@ jobid = server.scheduler.submit_job(json.dumps(job_dict))
 jobstatus = server.scheduler.job_status(jobid)
 while jobstatus in 'Submitted' or jobstatus in 'Running':
     sleep(30)
-    jobstatus = server.scheduler.job_status(jobid)
+    jobstatus = server.scheduler.job_status(jobid)['job_status']
 
 print(jobstatus)
