@@ -46,7 +46,7 @@ job = """
                 "commands": [
                     "apt-get update",
                     "apt-get install -y bsdtar psmisc wget python3 python3-pip libglib2.0-dev libffi-dev elfutils",
-                    "apt-get install -y libelf-dev libmount-dev libxml2 python3-pandas python3-numpy"
+                    "apt-get install -y libelf-dev libmount-dev libxml2 python3-pandas python3-numpy babeltrace"
                 ]
             }
         },
