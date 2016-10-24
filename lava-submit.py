@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-import xmlrpclib
 import json
 import os
 import sys
+import time
+import xmlrpclib
 
 if len(sys.argv) != 5:
     print("Must provide four arguments. {} {} {} {} {}".format(sys.argv[0],
@@ -121,9 +122,13 @@ server = xmlrpclib.ServerProxy('http://%s:%s@%s/RPC2' % (username, token, hostna
 
 jobid = server.scheduler.submit_job(json.dumps(job_dict))
 
-jobstatus = server.scheduler.job_status(jobid)
+jobstatus = server.scheduler.job_status(jobid)['job_status']
 while jobstatus in 'Submitted' or jobstatus in 'Running':
-    sleep(30)
+    time.sleep(30)
     jobstatus = server.scheduler.job_status(jobid)['job_status']
 
-print(jobstatus)
+if jobstatus not in 'Complete':
+    print(jobstatus)
+    sys.exit(-1)
+else:
+    sys.exit(0)
