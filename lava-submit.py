@@ -46,6 +46,7 @@ job = """
             "command": "lava_command_run",
             "parameters": {
                 "commands": [
+                    "locale-gen en_US.UTF-8",
                     "apt-get update",
                     "apt-get install -y bsdtar psmisc wget python3 python3-pip libglib2.0-dev libffi-dev elfutils",
                     "apt-get install -y libelf-dev libmount-dev libxml2 python3-pandas python3-numpy babeltrace"
