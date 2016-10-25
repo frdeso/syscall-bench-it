@@ -14,6 +14,7 @@
 #define NSEC_PER_SEC 1000000000
 
 static volatile int test_go;
+static volatile int test_stop;
 unsigned long *tot_nr_iter_per_thread;
 int num_threads;
 int cpu_affinity_enabled;
@@ -52,7 +53,7 @@ static void *failing_open_thr(void *a)
 		/* loop until the variable is set by main to start looping */
 	}
 
-	while(test_go) {
+	while(!test_stop) {
 		/* Will fail with ENOENT/EFAULT since the file does not exist */
 		fd = open(path, O_RDONLY);
 		nb_iter++;
@@ -80,8 +81,8 @@ static void *failing_close_thr(void *a)
 		/* loop until the variable is set by main to start looping */
 	}
 
-	while(test_go) {
-		/* Will fail with ENOENT/EFAULT since the file does not exist */
+	while(!test_stop) {
+		/* Will fail since the fd is invalid */
 		close(fd);
 		nb_iter++;
 	}
@@ -102,6 +103,7 @@ int main(int argc, char *argv[])
 	pthread_t *tids;
 
 	test_go = 0;
+	test_stop = 0;
 	total_nr_iter = 0;
 
 	if (argc != 4) {
@@ -154,7 +156,7 @@ int main(int argc, char *argv[])
 	/* Start the test case and let it run for sleep_time second */
 	test_go = 1;
 	nanosleep((const struct timespec*)&sleep_duration, NULL);
-	test_go = 0;
+	test_stop = 1;
 
 	/* Record the after timestamp */
 	gettimeofday(&tval_after, NULL);

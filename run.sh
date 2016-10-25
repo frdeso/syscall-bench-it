@@ -123,7 +123,7 @@ drop_caches() {
 
 file_output=./results.csv
 if [ -z ${1+x} ]; then
-	testcase_to_run="failing-open-enoent failing-open-efault failing-close"
+	testcase_to_run="failing-open-enoent"
 else
 	testcase_to_run=$1
 fi
