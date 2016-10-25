@@ -99,7 +99,8 @@ int main(int argc, char *argv[])
 	void * tret;
 	struct timeval tval_before, tval_after, tval_result;
 	struct timespec sleep_duration;
-	struct thread_arg arg;
+	struct thread_arg *args;
+	char * dat;
 	pthread_t *tids;
 
 	test_go = 0;
@@ -126,12 +127,12 @@ int main(int argc, char *argv[])
 	void* (*func)(void*);
 
 #ifdef FAILING_OPEN_NULL
-	arg.dat = NULL;
+	dat = NULL;
 	func = &failing_open_thr;
 #endif
 
 #ifdef FAILING_OPEN_NEXIST
-	arg.dat= "/path/to/file";
+	dat= "/path/to/file";
 	func = &failing_open_thr;
 #endif
 
@@ -140,11 +141,14 @@ int main(int argc, char *argv[])
 #endif
 
 	tids = calloc(num_threads, sizeof(*tids));
+	args = calloc(num_threads, sizeof(struct thread_arg));
 	tot_nr_iter_per_thread = calloc(num_threads, sizeof(unsigned long));
 
+
 	for (i = 0; i < num_threads; i++) {
-		arg.t_no = i;
-		err = pthread_create(&tids[i], NULL, func, &arg);
+		args[i].t_no = i;
+		args[i].dat = dat;
+		err = pthread_create(&tids[i], NULL, func, &args[i]);
 	}
 
 	/* Wait for all the threads to be ready */
