@@ -6,9 +6,9 @@ import sys
 import time
 import xmlrpclib
 
-if len(sys.argv) != 5:
-    print("Must provide four arguments. {} {} {} {} {}".format(sys.argv[0],
-        "LAVA_KEY", "kernel_imager", "modules_archive", "tools_commit"))
+if len(sys.argv) != 6:
+    print("Must provide five arguments. {} {} {} {} {}".format(sys.argv[0],
+        "LAVA_KEY", "kernel_imager","kernel_modules_archive", "lttng_modules_archive", "tools_commit"))
     sys.exit()
 
 token=sys.argv[1]
