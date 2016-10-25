@@ -181,5 +181,6 @@ int main(int argc, char *argv[])
 
 	free(tids);
 	free(tot_nr_iter_per_thread);
+	free(args);
 	return 0;
 }
