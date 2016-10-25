@@ -13,8 +13,9 @@ if len(sys.argv) != 5:
 
 token=sys.argv[1]
 kernel=sys.argv[2]
-modules=sys.argv[3]
-tools_commit=sys.argv[4]
+linux_modules=sys.argv[3]
+lttng_modules=sys.argv[4]
+tools_commit=sys.argv[5]
 
 
 job = """
@@ -88,8 +89,10 @@ job = """
 # We use the kernel image and modules archive received as argument
 deploy_action={"command": "deploy_kernel",
             "parameters": {
-            		"overlays": [
-            		    "scp://jenkins-lava@storage.internal.efficios.com"+modules ],
+                "overlays": [
+                    "scp://jenkins-lava@storage.internal.efficios.com"+linux_modules,
+                    "scp://jenkins-lava@storage.internal.efficios.com"+lttng_modules
+                    ],
                 "kernel":
                 "scp://jenkins-lava@storage.internal.efficios.com"+kernel,
                 "nfsrootfs": "scp://jenkins-lava@storage.internal.efficios.com/storage/jenkins-lava/rootfs/rootfs_amd64_trusty_2016-02-23-1134.tar.gz",
