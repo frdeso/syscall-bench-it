@@ -6,16 +6,17 @@ import sys
 import time
 import xmlrpclib
 
-if len(sys.argv) != 6:
-    print("Must provide five arguments. {} {} {} {} {}".format(sys.argv[0],
-        "LAVA_KEY", "kernel_imager","kernel_modules_archive", "lttng_modules_archive", "tools_commit"))
+if len(sys.argv) != 7:
+    print("Must provide 6 arguments.{} {} {} {} {} {} {}".format(sys.argv[0],
+        "job_name","LAVA_KEY", "kernel_image","kernel_modules_archive", "lttng_modules_archive", "tools_commit"))
     sys.exit()
 
-token=sys.argv[1]
-kernel=sys.argv[2]
-linux_modules=sys.argv[3]
-lttng_modules=sys.argv[4]
-tools_commit=sys.argv[5]
+job_name=sys.argv[1]
+token=sys.argv[2]
+kernel=sys.argv[3]
+linux_modules=sys.argv[4]
+lttng_modules=sys.argv[5]
+tools_commit=sys.argv[6]
 
 
 job = """
@@ -115,6 +116,7 @@ setup_action = {
                 ]
             }
         }
+job_dict['job_name']=job_name
 job_dict= json.loads(job)
 job_dict['actions'].insert(0, deploy_action)
 job_dict['actions'].insert(4, setup_action)
