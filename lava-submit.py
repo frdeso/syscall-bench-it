@@ -116,8 +116,8 @@ setup_action = {
                 ]
             }
         }
-job_dict['job_name']=job_name
 job_dict= json.loads(job)
+job_dict['job_name']=job_name
 job_dict['actions'].insert(0, deploy_action)
 job_dict['actions'].insert(4, setup_action)
 
