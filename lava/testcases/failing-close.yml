@@ -2,6 +2,7 @@ metadata:
         format: Lava-Test Test Definition 1.0
         name: benchmark-syscall-failing-close
         description: "Perform syscall tracing benchmark of failing close"
+
 params:
     JENKINS_JOBNAME: "default jobname"
 

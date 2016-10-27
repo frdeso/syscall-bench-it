@@ -2,6 +2,8 @@ metadata:
         format: Lava-Test Test Definition 1.0
         name: benchmark-syscall-failing-open-efault
         description: "Perform syscall tracing benchmark of failing open-efault"
+params:
+    JENKINS_JOBNAME: "default jobname"
 
 install:
         git-repos:

@@ -3,6 +3,9 @@ metadata:
         name: benchmark-syscall-failing-open-enoent
         description: "Perform syscall tracing benchmark of failing open-enoent"
 
+params:
+    JENKINS_JOBNAME: "default jobname"
+
 install:
         git-repos:
                 - url: https://github.com/frdeso/syscall-bench-it.git

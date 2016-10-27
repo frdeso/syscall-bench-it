@@ -89,6 +89,9 @@ job =""" {
 
 # We use the kernel image and modules archive received as argument
 deploy_action={"command": "deploy_kernel",
+                "metadata": {
+                    "jenkins_jobname": + job_name
+                },
             "parameters": {
                 "overlays": [
                     "scp://jenkins-lava@storage.internal.efficios.com"+linux_modules,
