@@ -19,7 +19,7 @@ lttng_modules=sys.argv[5]
 tools_commit=sys.argv[6]
 
 
-job = """
+job = 
 {
     "health_check": false,
     "job_name": "performance-tracker-benchmark-syscalls",
@@ -87,7 +87,7 @@ job = """
         }
     ]
 }
-"""
+
 # We use the kernel image and modules archive received as argument
 deploy_action={"command": "deploy_kernel",
             "parameters": {
@@ -116,7 +116,9 @@ setup_action = {
                 ]
             }
         }
-job_dict= json.loads(job)
+job_dict= job
+for t in [i for i in job['actions'] if i['command'] == 'lava_test_shell']:
+    t['parameters']['testdef_repos']['parameters']['JENKINS_JOBNAME'] = job_name
 job_dict['job_name']=job_name
 job_dict['actions'].insert(0, deploy_action)
 job_dict['actions'].insert(4, setup_action)
