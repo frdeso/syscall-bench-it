@@ -6,9 +6,10 @@ import sys
 import time
 import xmlrpclib
 
-if len(sys.argv) != 7:
-    print("Must provide 6 arguments.{} {} {} {} {} {} {}".format(sys.argv[0],
-        "job_name","LAVA_KEY", "kernel_image","kernel_modules_archive", "lttng_modules_archive", "tools_commit"))
+if len(sys.argv) != 8:
+    print("Must provide 7 arguments.{} {} {} {} {} {} {}".format(sys.argv[0],
+        "job_name","LAVA_KEY", "kernel_image","kernel_modules_archive",
+        "lttng_modules_archive", "tools_commit", "ust_commit"))
     sys.exit()
 
 job_name=sys.argv[1]
@@ -17,6 +18,7 @@ kernel=sys.argv[3]
 linux_modules=sys.argv[4]
 lttng_modules=sys.argv[5]
 tools_commit=sys.argv[6]
+ust_commit=sys.argv[6]
 
 
 job ="""{
@@ -104,6 +106,8 @@ setup_action = {
                     "vlttng --jobs=16 --profile urcu-master \
                     --profile lttng-tools-master -o \
                     projects.lttng-tools.checkout="+tools_commit+ \
+                    "--profile lttng-ust-master -o \
+                    projects.lttng-ust.checkout="+ust_commit+ \
                      " /tmp/virtenv"
                 ]
             }
