@@ -106,7 +106,7 @@ setup_action = {
                     "vlttng --jobs=16 --profile urcu-master \
                     --profile lttng-tools-master -o \
                     projects.lttng-tools.checkout="+tools_commit+ \
-                    "--profile lttng-ust-master -o \
+                    " --profile lttng-ust-master -o \
                     projects.lttng-ust.checkout="+ust_commit+ \
                      " /tmp/virtenv"
                 ]
