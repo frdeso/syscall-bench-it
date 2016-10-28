@@ -20,19 +20,19 @@ def test_case(df):
 
 
     for i, row in tmp.iterrows():
-        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'pereventmean'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr', 'pereventmean'])
         yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
             "measurement": str(row['perevent_mean'])})
 
-        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'pereventstdev'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr', 'pereventstdev'])
         yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
             "measurement": str(row['perevent_stdev'])})
 
-        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'memmean'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr', 'memmean'])
         yield( {"name": testcase_name, "result": "pass", "units": "kB",
             "measurement": str(row['mem_mean'])})
 
-        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'memstdev'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr', 'memstdev'])
         yield( {"name": testcase_name, "result": "pass", "units": "kB",
             "measurement": str(row['mem_stdev'])})
 
@@ -42,12 +42,13 @@ def main():
     df = pd.read_csv(results_file)
     data = test_case(df)
     for res in data:
-        call(
-            ['lava-test-case',
-            res['name'],
-            '--result', res['result'],
-            '--measurement', res['measurement'],
-            '--units', res['units']])
+        print(res)
+        #call(
+        #    ['lava-test-case',
+        #    res['name'],
+        #    '--result', res['result'],
+        #    '--measurement', res['measurement'],
+        #    '--units', res['units']])
 
 if __name__ == '__main__':
     main()
