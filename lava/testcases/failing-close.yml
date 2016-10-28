@@ -20,10 +20,9 @@ run:
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd benchmarks
                 - lava-test-case build-benchmarks --shell "make"
-                - lava-test-case build-benchmarks --shell "echo $JENKINS_JOBNAME"
                 - lava-test-case run-benchmarks --shell "./run.sh failing-close"
                 - lava-test-case-attach run-benchmarks "./results.csv"
-                - lava-test-case run-benchmarks --shell "python3 ./lava/parse-results.py ./results.csv"
+                - python3 ./lava/parse-results.py ./results.csv
                 - cd -
                 - tar czf coredump.tar.gz coredump
                 - lava-test-case-attach run-benchmarks coredump.tar.gz

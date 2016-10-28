@@ -19,7 +19,7 @@ lttng_modules=sys.argv[5]
 tools_commit=sys.argv[6]
 
 
-job =""" {
+job ="""{
     "health_check": false,
     "job_name": "performance-tracker-benchmark-syscalls",
     "device_type": "x86",
@@ -90,7 +90,8 @@ job =""" {
 # We use the kernel image and modules archive received as argument
 deploy_action={"command": "deploy_kernel",
                 "metadata": {
-                    "jenkins_jobname": job_name
+                    "jenkins_jobname": job_name,
+                    "nb_iterations": 2000000000
                 },
             "parameters": {
                 "overlays": [

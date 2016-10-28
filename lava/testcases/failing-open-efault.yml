@@ -21,7 +21,7 @@ run:
                 - lava-test-case build-benchmarks --shell "make"
                 - lava-test-case run-benchmarks --shell "./run.sh failing-open-efault"
                 - lava-test-case-attach run-benchmarks "./results.csv"
-                - lava-test-case run-benchmarks --shell "python3 ./lava/parse-results.py ./results.csv"
+                - python3 ./lava/parse-results.py ./results.csv
                 - cd -
                 - tar czf coredump.tar.gz coredump
                 - lava-test-case-attach run-benchmarks coredump.tar.gz

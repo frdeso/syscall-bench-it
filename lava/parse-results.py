@@ -20,19 +20,19 @@ def test_case(df):
 
 
     for i, row in tmp.iterrows():
-        testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'pereventmean'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'pereventmean'])
         yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
             "measurement": str(row['perevent_mean'])})
 
-        testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'pereventstdev'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'pereventstdev'])
         yield( {"name": testcase_name, "result": "pass", "units": "nsec/event",
             "measurement": str(row['perevent_stdev'])})
 
-        testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'memmean'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'memmean'])
         yield( {"name": testcase_name, "result": "pass", "units": "kB",
             "measurement": str(row['mem_mean'])})
 
-        testcase_name='_'.join([row['testcase'],row['tracer'],str(row['nbthreads'])+'thr',str(row['sleeptime']), 'memstdev'])
+        testcase_name='_'.join([row['tracer'],str(row['nbthreads'])+'thr'), 'memstdev'])
         yield( {"name": testcase_name, "result": "pass", "units": "kB",
             "measurement": str(row['mem_stdev'])})
 
