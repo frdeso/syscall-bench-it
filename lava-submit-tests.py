@@ -82,7 +82,6 @@ job ="""{
 deploy_action={"command": "deploy_kernel",
                 "metadata": {
                     "jenkins_jobname": job_name,
-                    "nb_iterations": 2000000000
                 },
             "parameters": {
                 "overlays": [
