@@ -16,7 +16,6 @@ run:
                 - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
                 - ulimit -c unlimited
-                - cd
                 - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd benchmarks
@@ -24,6 +23,6 @@ run:
                 - lava-test-case run-benchmarks --shell "./run.sh failing-close"
                 - lava-test-case-attach run-benchmarks "./results.csv"
                 - python3 ./lava/parse-results.py ./results.csv
-                - cd 
+                - cd -
                 - tar czf coredump.tar.gz coredump
                 - lava-test-case-attach run-benchmarks coredump.tar.gz
