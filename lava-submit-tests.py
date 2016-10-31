@@ -18,7 +18,7 @@ kernel=sys.argv[3]
 linux_modules=sys.argv[4]
 lttng_modules=sys.argv[5]
 tools_commit=sys.argv[6]
-ust_commit=sys.argv[6]
+ust_commit=sys.argv[7]
 
 
 job ="""{
