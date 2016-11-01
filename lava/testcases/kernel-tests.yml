@@ -11,9 +11,9 @@ run:
                 - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd /tmp/virtenv/src/lttng-tools
-                - lava-test-case build-benchmarks --shell "make"
+                - lava-test-case build-test-suite --shell "make"
                 - cd tests
-                - lava-test-case run-benchmarks --shell "./run.sh root_regression"
+                - lava-test-case run-tests --shell "./run.sh root_regression"
                 - cd
                 - tar czf coredump.tar.gz coredump
                 - lava-test-case-attach run-benchmarks coredump.tar.gz
