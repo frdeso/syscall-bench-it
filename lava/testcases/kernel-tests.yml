@@ -8,6 +8,7 @@ run:
                 - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
                 - ulimit -c unlimited
+                - cd
                 - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd /tmp/virtenv/src/lttng-tools
