@@ -6,6 +6,21 @@ import sys
 import time
 import xmlrpclib
 
+# Parse the results bundle to see the run-tests testcase 
+# of the lttng-kernel-tests passed successfully
+def check_job_test_case_status(server, job):
+    bundle_sha = server.scheduler.job_status(str(job))['bundle_sha1']
+    bundle = server.dashboard.get(bundle_sha)
+    content = json.loads(bundle['content'])
+    for run in content['test_runs']:
+        if run['test_id'] in 'lttng-kernel-test':
+            for result in run['test_results']:
+                if 'test_case_id' in result and result['test_case_id'] in 'run-tests':
+                    if result['result'] in 'pass':
+                        return True
+                    else:
+                        return False
+
 if len(sys.argv) != 8:
     print("Must provide 7 arguments.{} {} {} {} {} {} {}".format(sys.argv[0],
         "job_name","LAVA_KEY", "kernel_image","kernel_modules_archive",
@@ -134,6 +149,8 @@ while jobstatus in 'Submitted' or jobstatus in 'Running':
 
 if jobstatus not in 'Complete':
     print(jobstatus)
+
+if check_job_test_case_status(server, jobid, 'run-tests')
     sys.exit(-1)
 else:
     sys.exit(0)
