@@ -42,13 +42,12 @@ def main():
     df = pd.read_csv(results_file)
     data = test_case(df)
     for res in data:
-        print(res)
-        #call(
-        #    ['lava-test-case',
-        #    res['name'],
-        #    '--result', res['result'],
-        #    '--measurement', res['measurement'],
-        #    '--units', res['units']])
+        call(
+            ['lava-test-case',
+            res['name'],
+            '--result', res['result'],
+            '--measurement', res['measurement'],
+            '--units', res['units']])
 
 if __name__ == '__main__':
     main()
