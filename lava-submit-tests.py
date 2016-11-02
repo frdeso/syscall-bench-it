@@ -87,7 +87,7 @@ job ="""{
             "command": "submit_results",
             "parameters": {
                 "server": "http://lava-master.internal.efficios.com/RPC2/",
-                "stream": "/anonymous/benchmark-kernel/"
+                "stream": "/anonymous/tests-kernel/"
             }
         }
     ]
