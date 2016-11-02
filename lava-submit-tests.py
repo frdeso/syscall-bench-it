@@ -150,7 +150,7 @@ while jobstatus in 'Submitted' or jobstatus in 'Running':
 if jobstatus not in 'Complete':
     print(jobstatus)
 
-if check_job_test_case_status(server, jobid, 'run-tests')
+if check_job_test_case_status(server, jobid, 'run-tests'):
     sys.exit(-1)
 else:
     sys.exit(0)
