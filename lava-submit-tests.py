@@ -66,8 +66,9 @@ job ="""{
                     "locale-gen en_US.UTF-8",
                     "apt-get update",
                     "apt-get install -y bsdtar psmisc wget python3 python3-pip libglib2.0-dev libffi-dev elfutils",
-                    "apt-get install -y libelf-dev libmount-dev libxml2 python3-pandas python3-numpy babeltrace"
-                ]
+                    "apt-get install -y libelf-dev libmount-dev libxml2 python3-pandas python3-numpy libdw-dev ccache"
+                ],
+                "timeout": 18000
             }
         },
         {
@@ -117,13 +118,14 @@ setup_action = {
                 "commands": [
                 	"git clone https://github.com/frdeso/syscall-bench-it.git bm",
                     "pip3 install vlttng",
-                    "vlttng --jobs=16 --profile urcu-master \
+                    "vlttng --jobs=16 --profile babeltrace-stable-1.4 --profile use-ccache-gcc --profile urcu-master \
                     --profile lttng-tools-master -o \
                     projects.lttng-tools.checkout="+tools_commit+ \
                     " --profile lttng-ust-master -o \
                     projects.lttng-ust.checkout="+ust_commit+ \
                      " /tmp/virtenv"
-                ]
+                ],
+                "timeout": 18000
             }
         }
 job_dict= json.loads(job)
