@@ -8,7 +8,7 @@ import xmlrpclib
 
 # Parse the results bundle to see the run-tests testcase 
 # of the lttng-kernel-tests passed successfully
-def check_job_test_case_status(server, job):
+def check_job_test_case_succeed(server, job):
     bundle_sha = server.scheduler.job_status(str(job))['bundle_sha1']
     bundle = server.dashboard.get(bundle_sha)
     content = json.loads(bundle['content'])
@@ -152,7 +152,7 @@ while jobstatus in 'Submitted' or jobstatus in 'Running':
 if jobstatus not in 'Complete':
     print(jobstatus)
 
-if check_job_test_case_status(server, jobid):
-    sys.exit(-1)
-else:
+if check_job_test_case_succeed(server, jobid):
     sys.exit(0)
+else:
+    sys.exit(-1)
