@@ -2,8 +2,7 @@ metadata:
         format: Lava-Test Test Definition 1.0
         name: lttng-kernel-test
         description: "Run kernel test suite"
-
-run:
+install:
         steps:
                 - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
@@ -13,6 +12,9 @@ run:
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd /tmp/virtenv/src/lttng-tools
                 - lava-test-case build-test-suite --shell "make"
+
+run:
+        steps:
                 - cd tests
                 - lava-test-case run-tests --shell "./run.sh root_regression"
                 - cd

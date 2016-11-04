@@ -11,7 +11,6 @@ install:
                 - url: https://github.com/frdeso/syscall-bench-it.git
                   destination: benchmarks
                   branch: master
-run:
         steps:
                 - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
@@ -20,6 +19,8 @@ run:
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
                 - cd benchmarks
                 - lava-test-case build-benchmarks --shell "make"
+run:
+        steps:
                 - lava-test-case run-benchmarks --shell "./run.sh failing-close"
                 - lava-test-case-attach run-benchmarks "./results.csv"
                 - python3 ./lava/parse-results.py ./results.csv
