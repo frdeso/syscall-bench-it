@@ -11,13 +11,13 @@ install:
                   destination: benchmarks
                   branch: master
         steps:
-                - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
                 - ulimit -c unlimited
                 - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
 run:
         steps:
+                - source /tmp/virtenv/activate
                 - cd benchmarks
                 - lava-test-case build-benchmarks --shell "make"
                 - lava-test-case run-benchmarks --shell "./run.sh failing-open-efault"
