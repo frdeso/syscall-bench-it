@@ -4,17 +4,16 @@ metadata:
         description: "Run kernel test suite"
 install:
         steps:
-                - source /tmp/virtenv/activate
                 - export TMPDIR="/tmp"
-                - ulimit -c unlimited
                 - cd
+                - ulimit -c unlimited
                 - mkdir -p coredump
                 - echo "$(pwd)/coredump/core.%e.%p.%h.%t" > /proc/sys/kernel/core_pattern
-                - cd /tmp/virtenv/src/lttng-tools
-                - lava-test-case build-test-suite --shell "make"
-
 run:
         steps:
+                - source /tmp/virtenv/activate
+                - cd /tmp/virtenv/src/lttng-tools
+                - lava-test-case build-test-suite --shell "make"
                 - cd tests
                 - lava-test-case run-tests --shell "./run.sh root_regression"
                 - cd
