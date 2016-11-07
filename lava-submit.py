@@ -38,7 +38,8 @@ job ="""{
                     "cat /etc/resolv.conf",
                     "echo nameserver 172.18.0.12 > /etc/resolv.conf",
                     "mount /dev/sda1 /tmp",
-                    "rm -rf /tmp/*"
+                    "rm -rf /tmp/*",
+                    "depmod -a"
                 ]
             }
         },
