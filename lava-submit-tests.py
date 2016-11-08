@@ -1,17 +1,24 @@
 #!/usr/bin/python
 
+import base64
 import json
 import os
 import sys
 import time
 import xmlrpclib
 
+TMP_RESULTS_FILE='./tmp-tests-output.txt'
+
+def get_job_bundle_content(server, job):
+    bundle_sha = server.scheduler.job_status(str(job))['bundle_sha1']
+    bundle = server.dashboard.get(bundle_sha)
+
+    return json.loads(bundle['content'])
+
 # Parse the results bundle to see the run-tests testcase 
 # of the lttng-kernel-tests passed successfully
 def check_job_test_case_succeed(server, job):
-    bundle_sha = server.scheduler.job_status(str(job))['bundle_sha1']
-    bundle = server.dashboard.get(bundle_sha)
-    content = json.loads(bundle['content'])
+    content = get_job_bundle_content(server, job)
     for run in content['test_runs']:
         if run['test_id'] in 'lttng-kernel-test':
             for result in run['test_results']:
@@ -20,6 +27,41 @@ def check_job_test_case_succeed(server, job):
                         return True
                     else:
                         return False
+# Parse the attachment of the testcase to fetch the stdout of the test suite
+def fetch_test_output(server, job):
+    content = get_job_bundle_content(server, job)
+    found = False
+    output_file = open(TMP_RESULTS_FILE, 'w')
+
+    for run in content['test_runs']:
+        if run['test_id'] in 'lttng-kernel-test':
+            for attachment in run['attachments']:
+                if attachment['pathname'] in 'stdout.log':
+
+                    # Decode the base64 file and split on newlines to iterate
+                    # on list
+                    testoutput = base64.b64decode(attachment['content']).split('\n')
+
+                    # Create a generator to iterate on the lines and keeping
+                    # the state of the iterator across the two loops.
+                    testoutput_iter = iter(testoutput)
+                    for line in testoutput_iter:
+
+                        # Find the header of the test case and start printing
+                        # from there
+                        if 'LAVA_SIGNAL_STARTTC run-tests' in line:
+                            found = True
+                            for line in testoutput_iter:
+                                if 'LAVA_SIGNAL_ENDTC run-tests' not in line:
+                                    output_file.write(line + '\n')
+                                else:
+                                    # Print until we reach the end of the
+                                    # section
+                                    break
+
+                        if found is True:
+                            break
+    output_file.close()
 
 if len(sys.argv) != 8:
     print("Must provide 7 arguments.{} {} {} {} {} {} {}".format(sys.argv[0],
@@ -152,6 +194,8 @@ while jobstatus in 'Submitted' or jobstatus in 'Running':
 
 if jobstatus not in 'Complete':
     print(jobstatus)
+
+fetch_test_output(server, jobid)
 
 if check_job_test_case_succeed(server, jobid):
     sys.exit(0)
