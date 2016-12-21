@@ -38,12 +38,13 @@ run_baseline() {
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
-	start_mem_tracker
+#	start_mem_tracker
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
-	update_max_mem_usage
+#	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
-	nb_events=-1
+	nb_events="na"
+	discard_events="na"
 }
 run_strace() {
 	testcase=$1
@@ -64,7 +65,9 @@ run_lttng() {
 	nbThreads=$3
 	sleepTime=$4
 	discard_events=0
-	start_mem_tracker
+
+# Removed the memory tracking to limit unneeded interferences
+#	start_mem_tracker
 	lttng-sessiond -d
 	lttng create --output=$(mktemp -d --tmpdir=/tmp/)
 	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
@@ -76,9 +79,13 @@ run_lttng() {
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	discard_events=$(lttng stop | grep 'warning' | awk '{print $2}')
+	discard_events="na"
 	sleep 1
-	update_max_mem_usage
-	nb_events=$(lttng view | wc -l)
+#	update_max_mem_usage
+
+#Dont count the number of event to reduce runtime
+	#nb_events=$(lttng view | wc -l)
+	nb_events="na"
 	lttng destroy -a
 	killall lttng-sessiond
 }
