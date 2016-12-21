@@ -38,7 +38,7 @@ static void *failing_open_thr(void *a)
 	int fd, thread_no;
 	struct thread_arg *arg;
 	char *path;
-	unsigned int nb_iter;
+	unsigned long nb_iter;
 
 	nb_iter = 0;
 	arg = (struct thread_arg*) a;
