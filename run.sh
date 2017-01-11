@@ -140,9 +140,10 @@ for nthreads in 1 2 4 8 16; do
 	for cpuaffinity in 0; do
 		for tcase in $(echo $testcase_to_run); do
 			for tracer in baseline lttng ; do
+			        # Run the testcase once to warm the caches
+			        # and discard the results
+				run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 				for i in $(seq 1 5); do
-					drop_caches
-
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem >> $file_output
 					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem
