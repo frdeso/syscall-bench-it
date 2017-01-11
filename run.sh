@@ -137,7 +137,7 @@ fi
 
 echo 'testcase,tracer,run,sleeptime,cpu_affinity,nbthreads,duration,nbiter,nbevents,discarded,maxmem' > $file_output
 for nthreads in 1 2 4 8 16; do
-	for cpuaffinity in 0; do
+	for cpuaffinity in 1; do
 		for tcase in $(echo $testcase_to_run); do
 			for tracer in baseline lttng ; do
 			        # Run the testcase once to warm the caches
