@@ -1,6 +1,8 @@
 #define _GNU_SOURCE
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +17,8 @@
 
 static volatile int test_go;
 static volatile int test_stop;
-unsigned long *tot_nr_iter_per_thread;
+unsigned long long *tot_nr_iter_per_thread;
+sem_t sem_start, sem_stop;
 int num_threads;
 int cpu_affinity_enabled;
 
@@ -35,25 +38,31 @@ void set_cpu_affinity(int thread_no)
 
 static void *failing_open_thr(void *a)
 {
-	int fd, thread_no;
+	int fd, thread_no, ret;
 	struct thread_arg *arg;
 	char *path;
-	unsigned long nb_iter;
+	unsigned long nb_iter = 0;
 
-	nb_iter = 0;
-	arg = (struct thread_arg*) a;
-	path = (char*) arg->dat;
+	arg = (struct thread_arg *) a;
+	path = (char *) arg->dat;
 	thread_no = (int) arg->t_no;
 
 	if (cpu_affinity_enabled) {
 		set_cpu_affinity(thread_no);
 	}
 
-	while(!test_go) {
+	/* Post on the semaphore to tell main this thread is ready to go */
+	ret = sem_post(&sem_start);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
+
+	while (!test_go) {
 		/* loop until the variable is set by main to start looping */
 	}
 
-	while(!test_stop) {
+	while (!test_stop) {
 		/* Will fail with ENOENT/EFAULT since the file does not exist */
 		fd = open(path, O_RDONLY);
 		nb_iter++;
@@ -64,24 +73,30 @@ static void *failing_open_thr(void *a)
 
 static void *failing_close_thr(void *a)
 {
-	int thread_no;
+	int thread_no, ret;
 	int fd = -1;
-	unsigned long nb_iter;
+	unsigned long nb_iter = 0;
 	struct thread_arg *arg;
 
-	nb_iter = 0;
-	arg = (struct thread_arg*) a;
+	arg = (struct thread_arg *) a;
 	thread_no = (int) arg->t_no;
 
 	if (cpu_affinity_enabled) {
 		set_cpu_affinity(thread_no);
 	}
 
-	while(!test_go) {
+	/* Post on the semaphore to tell main this thread is ready to go */
+	ret = sem_post(&sem_start);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
+
+	while (!test_go) {
 		/* loop until the variable is set by main to start looping */
 	}
 
-	while(!test_stop) {
+	while (!test_stop) {
 		/* Will fail since the fd is invalid */
 		close(fd);
 		nb_iter++;
@@ -92,20 +107,18 @@ static void *failing_close_thr(void *a)
 
 int main(int argc, char *argv[])
 {
-	int i, err;
-	long time_diff, sleep_sec, sleep_nsec;
-	unsigned long total_nr_iter;
+	int i, ret;
+	unsigned long long time_diff, sleep_sec, sleep_nsec;
+	unsigned long long total_nr_iter = 0;
 	unsigned long long sleep_time;
-	void * tret;
+	void *tret;
 	struct timeval tval_before, tval_after, tval_result;
 	struct timespec sleep_duration;
 	struct thread_arg *args;
-	char * dat;
+	char *dat;
 	pthread_t *tids;
-
-	test_go = 0;
-	test_stop = 0;
-	total_nr_iter = 0;
+	/* Declare the function pointer that we use to define the testcase */
+	void *(*func)(void *);
 
 	if (argc != 4) {
 		fprintf(stderr, "Wrong number of arguments. %s cpu_affinity_enabled\
@@ -115,16 +128,18 @@ int main(int argc, char *argv[])
 
 	cpu_affinity_enabled = atoi(argv[1]);
 	num_threads = atoi(argv[2]);
-	sleep_time = strtoull(argv[3], NULL, 10);
+	errno = 0;
+	sleep_time = strtoull(argv[3], NULL, 10); // return value of this call
+	if (errno == ERANGE) {
+		printf("Error during strtoull %d\n", errno);
+		exit(-1);
+	}
 
-	sleep_sec = sleep_time/NSEC_PER_SEC;
-	sleep_nsec = sleep_time - (sleep_sec*NSEC_PER_SEC);
+	sleep_sec = sleep_time / NSEC_PER_SEC;
+	sleep_nsec = sleep_time - (sleep_sec * NSEC_PER_SEC);
 
 	sleep_duration.tv_sec = sleep_sec;
 	sleep_duration.tv_nsec = sleep_nsec;
-
-	/* Declare the function pointer that we use to define the testcase */
-	void* (*func)(void*);
 
 #ifdef FAILING_OPEN_NULL
 	dat = NULL;
@@ -132,7 +147,7 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef FAILING_OPEN_NEXIST
-	dat= "/path/to/file";
+	dat = "/path/to/file";
 	func = &failing_open_thr;
 #endif
 
@@ -141,33 +156,73 @@ int main(int argc, char *argv[])
 #endif
 
 	tids = calloc(num_threads, sizeof(*tids));
-	args = calloc(num_threads, sizeof(struct thread_arg));
-	tot_nr_iter_per_thread = calloc(num_threads, sizeof(unsigned long));
+	if (tids == NULL) {
+		printf("calloc error\n");
+		exit(-1);
+	}
 
+	args = calloc(num_threads, sizeof(struct thread_arg));
+	if (args == NULL) {
+		printf("calloc error\n");
+		exit(-1);
+	}
+
+	tot_nr_iter_per_thread = calloc(num_threads, sizeof(unsigned long long));
+	if (tot_nr_iter_per_thread == NULL) {
+		printf("calloc error\n");
+		exit(-1);
+	}
+
+	ret = sem_init(&sem_start, 0, 0);
+	if (ret == -1) {
+		printf("sem_init error\n");
+		exit(-1);
+	}
 
 	for (i = 0; i < num_threads; i++) {
 		args[i].t_no = i;
 		args[i].dat = dat;
-		err = pthread_create(&tids[i], NULL, func, &args[i]);
+		ret = pthread_create(&tids[i], NULL, func, &args[i]);
+		if (ret != 0 ) {
+			printf("pthread_create error: %d\n", ret);
+			exit(-1);
+		}
 	}
 
 	/* Wait for all the threads to be ready */
-	sleep(1);
+	for (i = 0; i < num_threads; i++) {
+		ret = sem_wait(&sem_start);
+		if (ret == -1) {
+			printf("sem_wait error\n");
+			exit(-1);
+		}
+	}
 
 	/* Record the before timestamp */
-	gettimeofday(&tval_before, NULL);
+	ret = gettimeofday(&tval_before, NULL);
+	if (ret == -1) {
+		printf("gettimeofday error\n");
+		exit(-1);
+	}
 
 	/* Start the test case and let it run for sleep_time second */
 	test_go = 1;
-	nanosleep((const struct timespec*)&sleep_duration, NULL);
+	while (nanosleep(&sleep_duration, &sleep_duration) == -1){
+		continue;
+	}
 	test_stop = 1;
 
 	/* Record the after timestamp */
 	gettimeofday(&tval_after, NULL);
+	if (ret == -1) {
+		printf("gettimeofday error\n");
+		exit(-1);
+	}
 
 	for (i = 0; i < num_threads; i++) {
-		err = pthread_join(tids[i], &tret);
-		if (err != 0) {
+		ret = pthread_join(tids[i], &tret);
+		if (ret != 0) {
+			printf("pthread_join error\n");
 			exit(-1);
 		}
 		/* Sum the number of iteration for all the threads */
@@ -175,9 +230,14 @@ int main(int argc, char *argv[])
 	}
 
 	timersub(&tval_after, &tval_before, &tval_result);
-	time_diff = (tval_result.tv_sec * 1000000) + tval_result.tv_usec;
+	time_diff = (tval_result.tv_sec * 1000000ULL) + tval_result.tv_usec;
 
-	printf("%ld %ld", time_diff, total_nr_iter);
+	ret = sem_destroy(&sem_start);
+	if (ret == -1) {
+		printf("sem_destroy error\n");
+		exit(-1);
+	}
+
 
 	free(tids);
 	free(tot_nr_iter_per_thread);
