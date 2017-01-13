@@ -69,7 +69,7 @@ run_lttng() {
 # Removed the memory tracking to limit unneeded interferences
 #	start_mem_tracker
 	lttng-sessiond -d
-	lttng create --output=$(mktemp -d --tmpdir=/tmp/)
+	lttng create --snapshot --output=$(mktemp -d --tmpdir=/tmp/)
 	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
 	lttng enable-event -k --syscall --all --channel my_channel
