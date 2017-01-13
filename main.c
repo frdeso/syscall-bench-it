@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <numa.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <sched.h>
@@ -30,7 +31,22 @@ struct thread_arg {
 void set_cpu_affinity(int thread_no)
 {
 	cpu_set_t set;
-	CPU_SET(thread_no, &set);
+	int cpu = 0;
+
+	/*
+	 * This code spreads the thread on all the NUMA nodes available on the
+	 * machine.
+	 * For example, on machine with 2 NUMA nodes ands 16 cores and a run
+	 * with 4 threads, thread0 and thread2 will be pinned to the first NUMA
+	 * node and thread1 and thread3 will be pinned to the second.
+	 */
+	int nb_numa_nodes = numa_num_configured_nodes();
+	int nb_cores = numa_num_configured_cpus();
+	int nb_cores_per_nodes = nb_cores / nb_numa_nodes;
+
+	cpu = (thread_no / nb_numa_nodes) + ((thread_no % nb_numa_nodes) * nb_cores_per_nodes);
+
+	CPU_SET(cpu, &set);
 
 	sched_setaffinity(0, sizeof(set), &set);
 }
@@ -172,6 +188,9 @@ int main(int argc, char *argv[])
 		printf("calloc error\n");
 		exit(-1);
 	}
+
+	/* Initialize the numa librarie */
+	numa_available();
 
 	ret = sem_init(&sem_start, 0, 0);
 	if (ret == -1) {
