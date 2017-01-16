@@ -65,10 +65,18 @@ run_lttng() {
 	nbThreads=$3
 	sleepTime=$4
 	discard_events=0
+	LOCK=1
+
+	trap 'LOCK=0' SIGUSR1
 
 # Removed the memory tracking to limit unneeded interferences
 #	start_mem_tracker
-	lttng-sessiond -d
+	lttng-sessiond --sig-parent &
+	while [[ $LOCK -eq 1 ]]
+	 do
+		sleep 1
+	done
+
 	lttng create --snapshot --output=$(mktemp -d --tmpdir=/tmp/)
 	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
@@ -88,6 +96,7 @@ run_lttng() {
 	nb_events="na"
 	lttng destroy -a
 	killall lttng-sessiond
+	wait
 }
 run_sysdig() {
 	testcase=$1
