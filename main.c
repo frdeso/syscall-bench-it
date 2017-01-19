@@ -19,7 +19,7 @@
 static volatile int test_go;
 static volatile int test_stop;
 unsigned long long *tot_nr_iter_per_thread;
-sem_t sem_start, sem_stop;
+sem_t sem_thr;
 int num_threads;
 int cpu_affinity_enabled;
 
@@ -68,7 +68,7 @@ static void *failing_open_thr(void *a)
 	}
 
 	/* Post on the semaphore to tell main this thread is ready to go */
-	ret = sem_post(&sem_start);
+	ret = sem_post(&sem_thr);
 	if (ret == -1) {
 		printf("sem_post error\n");
 		exit(-1);
@@ -83,7 +83,15 @@ static void *failing_open_thr(void *a)
 		fd = open(path, O_RDONLY);
 		nb_iter++;
 	}
+
 	tot_nr_iter_per_thread[thread_no] = nb_iter;
+
+	/* Post on the semaphore to tell main this thread is done */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
 	return (void*)1;
 }
 
@@ -102,7 +110,7 @@ static void *failing_close_thr(void *a)
 	}
 
 	/* Post on the semaphore to tell main this thread is ready to go */
-	ret = sem_post(&sem_start);
+	ret = sem_post(&sem_thr);
 	if (ret == -1) {
 		printf("sem_post error\n");
 		exit(-1);
@@ -117,7 +125,16 @@ static void *failing_close_thr(void *a)
 		close(fd);
 		nb_iter++;
 	}
+
 	tot_nr_iter_per_thread[thread_no] = nb_iter;
+
+	/* Post on the semaphore to tell main this thread is done */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
+
 	return (void*)1;
 }
 
@@ -192,7 +209,7 @@ int main(int argc, char *argv[])
 	/* Initialize the numa librarie */
 	numa_available();
 
-	ret = sem_init(&sem_start, 0, 0);
+	ret = sem_init(&sem_thr, 0, 0);
 	if (ret == -1) {
 		printf("sem_init error\n");
 		exit(-1);
@@ -210,7 +227,7 @@ int main(int argc, char *argv[])
 
 	/* Wait for all the threads to be ready */
 	for (i = 0; i < num_threads; i++) {
-		ret = sem_wait(&sem_start);
+		ret = sem_wait(&sem_thr);
 		if (ret == -1) {
 			printf("sem_wait error\n");
 			exit(-1);
@@ -230,6 +247,15 @@ int main(int argc, char *argv[])
 		continue;
 	}
 	test_stop = 1;
+
+	/* Wait for all the threads to be done */
+	for (i = 0; i < num_threads; i++) {
+		ret = sem_wait(&sem_thr);
+		if (ret == -1) {
+			printf("sem_wait error\n");
+			exit(-1);
+		}
+	}
 
 	/* Record the after timestamp */
 	gettimeofday(&tval_after, NULL);
@@ -251,7 +277,7 @@ int main(int argc, char *argv[])
 	timersub(&tval_after, &tval_before, &tval_result);
 	time_diff = (tval_result.tv_sec * 1000000ULL) + tval_result.tv_usec;
 
-	ret = sem_destroy(&sem_start);
+	ret = sem_destroy(&sem_thr);
 	if (ret == -1) {
 		printf("sem_destroy error\n");
 		exit(-1);
