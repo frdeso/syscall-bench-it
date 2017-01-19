@@ -257,6 +257,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
+	printf("%llu %llu", time_diff, total_nr_iter);
 
 	free(tids);
 	free(tot_nr_iter_per_thread);
