@@ -39,6 +39,8 @@ run_baseline() {
 	nbThreads=$3
 	sleepTime=$4
 #	start_mem_tracker
+        #run the testcase twice to warm the cache
+	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
 #	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
@@ -82,7 +84,9 @@ run_lttng() {
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
 	lttng enable-event -k --syscall --all --channel my_channel
 	lttng start
-	sleep 2
+	# we run the testcase twice to ensure the tracer's and testcase's pages are warm
+	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+
 	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
@@ -151,7 +155,6 @@ for nthreads in 1 2 4 8 16; do
 			for tracer in baseline lttng ; do
 			        # Run the testcase once to warm the caches
 			        # and discard the results
-				run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 				for i in $(seq 1 5); do
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
 					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem >> $file_output
