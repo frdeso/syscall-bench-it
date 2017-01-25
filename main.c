@@ -17,7 +17,7 @@
 #define NSEC_PER_SEC 1000000000
 
 static volatile int test_go;
-static volatile int test_stop;
+static volatile int test_stop __attribute__((aligned(256)));
 unsigned long long *tot_nr_iter_per_thread;
 sem_t sem_thr;
 int num_threads;
@@ -34,9 +34,9 @@ void set_cpu_affinity(int thread_no)
 	int cpu = 0;
 
 	/*
-	 * This code spreads the thread on all the NUMA nodes available on the
+	 * This code spreads the threads on all the NUMA nodes available on the
 	 * machine.
-	 * For example, on machine with 2 NUMA nodes ands 16 cores and a run
+	 * For example, on machine with 2 NUMA nodes and 16 cores and a run
 	 * with 4 threads, thread0 and thread2 will be pinned to the first NUMA
 	 * node and thread1 and thread3 will be pinned to the second.
 	 */
