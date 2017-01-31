@@ -7,6 +7,7 @@
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -214,6 +215,8 @@ int main(int argc, char *argv[])
 		printf("sem_init error\n");
 		exit(-1);
 	}
+
+	prctl(PR_SET_NAME, "frdeso_debug");
 
 	for (i = 0; i < num_threads; i++) {
 		args[i].t_no = i;
