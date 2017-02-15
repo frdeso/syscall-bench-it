@@ -141,6 +141,50 @@ static void *open_dup_close_thr(void *a)
 	}
 	return (void*)1;
 }
+static void *open_close_thr(void *a)
+{
+	int fd, thread_no, ret;
+	struct thread_arg *arg;
+	char *path;
+	unsigned long nb_iter = 0;
+
+	arg = (struct thread_arg *) a;
+	path = (char *) arg->dat;
+	thread_no = (int) arg->t_no;
+
+	if (cpu_affinity_enabled) {
+		set_cpu_affinity(thread_no);
+	}
+
+
+	/* Post on the semaphore to tell main this thread is ready to go */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
+
+	while (!test_go) {
+		/* loop until the variable is set by main to start looping */
+	}
+
+	while (!test_stop) {
+		fd = open(path, O_RDONLY);
+		close(fd);
+		nb_iter++;
+	}
+
+	tot_nr_iter_per_thread[thread_no] = nb_iter;
+
+	close(fd);
+	/* Post on the semaphore to tell main this thread is done */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		printf("sem_post error\n");
+		exit(-1);
+	}
+	return (void*)1;
+}
 
 static void *failing_close_thr(void *a)
 {
@@ -234,6 +278,10 @@ int main(int argc, char *argv[])
 #ifdef SUCCESS_OPEN_DUP_CLOSE
 	dat = "/etc/passwd";
 	func = &open_dup_close_thr;
+#endif
+#ifdef SUCCESS_OPEN_CLOSE
+	dat = "/etc/passwd";
+	func = &open_close_thr;
 #endif
 
 #ifdef FAILING_CLOSE
