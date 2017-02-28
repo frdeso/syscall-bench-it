@@ -12,50 +12,27 @@ nb_events=0
 max_mem=0
 tracker_pid=0
 discard_events=0
-run_mem_tracker=0
-
-MEM_USAGE_FILE=$(mktemp)
-
-start_mem_tracker() {
-	cp /dev/null $MEM_USAGE_FILE
-	#top -b  | grep 'KiB Swap' | awk '{print $9}' >> $MEM_USAGE_FILE &
-	bash -c "while true; do cat /proc/meminfo | grep -E '^Cached:'|awk '{print \$2}' >> $MEM_USAGE_FILE; sleep 1; done" &
-	tracker_pid=$!
-}
-
-update_max_mem_usage() {
-	kill -9 $tracker_pid
-	wait $tracker_pid
-
-	max_mem=0
-	for tmp in $(cat $MEM_USAGE_FILE); do
-		(($tmp > $max_mem)) && max_mem=$tmp
-	done
-}
 
 run_baseline() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
-#	start_mem_tracker
         #run the testcase twice to warm the cache
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
-#	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events="na"
 	discard_events="na"
 }
+
 run_strace() {
 	testcase=$1
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
-	start_mem_tracker
 	output=$(strace -f ./$testcase $cpu_affinity $nbThreads $sleepTime 2> /dev/null)
-	update_max_mem_usage
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	nb_events=-1
@@ -71,8 +48,6 @@ run_lttng() {
 
 	trap 'LOCK=0' SIGUSR1
 
-# Removed the memory tracking to limit unneeded interferences
-#	start_mem_tracker
 	lttng-sessiond --sig-parent &
 	while [[ $LOCK -eq 1 ]]
 	 do
@@ -93,7 +68,6 @@ run_lttng() {
 	discard_events=$(lttng stop | grep 'warning' | awk '{print $2}')
 	discard_events="na"
 	sleep 1
-#	update_max_mem_usage
 
 #Dont count the number of event to reduce runtime
 	#nb_events=$(lttng view | wc -l)
@@ -109,7 +83,6 @@ run_sysdig() {
 	sleepTime=$4
 	tmp_file=$(mktemp --tmpdir=/root/tmp/)
 
-	start_mem_tracker
 	sysdig -w $tmp_file &
 	#save sysdig's pid
 	p=$!
@@ -118,7 +91,6 @@ run_sysdig() {
 	duration=$(echo $output | cut -f1 -d ' ')
 	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
 	sleep 1
-	update_max_mem_usage
 
 	# Send sigint to sysdig and wait for it to exit
 	kill -2 $p
