@@ -26,17 +26,6 @@ run_baseline() {
 	discard_events="na"
 }
 
-run_strace() {
-	testcase=$1
-	cpu_affinity=$2
-	nbThreads=$3
-	sleepTime=$4
-	output=$(strace -f ./"$testcase $cpu_affinity $nbThreads $sleepTime" 2> /dev/null)
-	duration=$(echo "$output" | cut -f1 -d ' ')
-	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
-	nb_events=-1
-}
-
 run_lttng() {
 	testcase=$1
 	cpu_affinity=$2
@@ -74,37 +63,6 @@ run_lttng() {
 	lttng destroy -a
 	killall lttng-sessiond
 	wait
-}
-run_sysdig() {
-	testcase=$1
-	cpu_affinity=$2
-	nbThreads=$3
-	sleepTime=$4
-	tmp_file=$(mktemp --tmpdir=/root/tmp/)
-
-	sysdig -w "$tmp_file" &
-	#save sysdig's pid
-	p=$!
-	sleep 2
-	output=$("./$testcase $cpu_affinity $nbThreads $sleepTime")
-	duration=$(echo "$output" | cut -f1 -d ' ')
-	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
-	sleep 1
-
-	# Send sigint to sysdig and wait for it to exit
-	kill -2 $p
-	wait $p
-
-	#sync to make sure the entire trace is written to disk
-	sync
-
-	# extract the number of events from the read verbose output
-	sysdig_output=$(sysdig -r "$tmp_file" -v 2>&1 >/dev/null)
-
-	nb_events=$(echo "$sysdig_output" |grep 'Elapsed'|awk '{print $10}'|sed 's/,//g')
-	discard_events=$(echo "$sysdig_output" |grep 'Drops' | awk '{print $4}' | cut -f2 -d:)
-	echo "$sysdig_output" | grep 'Driver'
-	rm "$tmp_file"
 }
 
 drop_caches() {
