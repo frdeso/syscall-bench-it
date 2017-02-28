@@ -10,7 +10,6 @@ duration=0
 tot_nb_iter=0
 nb_events=0
 max_mem=0
-tracker_pid=0
 discard_events=0
 
 run_baseline() {
@@ -21,8 +20,8 @@ run_baseline() {
         #run the testcase twice to warm the cache
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
-	duration=$(echo $output | cut -f1 -d ' ')
-	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
+	duration=$(echo "$output" | cut -f1 -d ' ')
+	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	nb_events="na"
 	discard_events="na"
 }
@@ -32,9 +31,9 @@ run_strace() {
 	cpu_affinity=$2
 	nbThreads=$3
 	sleepTime=$4
-	output=$(strace -f ./$testcase $cpu_affinity $nbThreads $sleepTime 2> /dev/null)
-	duration=$(echo $output | cut -f1 -d ' ')
-	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
+	output=$(strace -f ./"$testcase $cpu_affinity $nbThreads $sleepTime" 2> /dev/null)
+	duration=$(echo "$output" | cut -f1 -d ' ')
+	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	nb_events=-1
 }
 
@@ -54,7 +53,7 @@ run_lttng() {
 		sleep 1
 	done
 
-	lttng create --snapshot --output=$(mktemp -d --tmpdir=/tmp/)
+	lttng create --snapshot --output="$(mktemp -d --tmpdir=/tmp/)"
 	lttng enable-channel --num-subbuf 512 --subbuf-size 64k --kernel my_channel
 	lttng enable-event -k sched_process_exit,sched_switch,signal_deliver --channel my_channel
 	lttng enable-event -k --syscall --all --channel my_channel
@@ -63,8 +62,8 @@ run_lttng() {
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 
 	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
-	duration=$(echo $output | cut -f1 -d ' ')
-	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
+	duration=$(echo "$output" | cut -f1 -d ' ')
+	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	discard_events=$(lttng stop | grep 'warning' | awk '{print $2}')
 	discard_events="na"
 	sleep 1
@@ -83,13 +82,13 @@ run_sysdig() {
 	sleepTime=$4
 	tmp_file=$(mktemp --tmpdir=/root/tmp/)
 
-	sysdig -w $tmp_file &
+	sysdig -w "$tmp_file" &
 	#save sysdig's pid
 	p=$!
 	sleep 2
-	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
-	duration=$(echo $output | cut -f1 -d ' ')
-	tot_nb_iter=$(echo $output | cut -f2 -d ' ')
+	output=$("./$testcase $cpu_affinity $nbThreads $sleepTime")
+	duration=$(echo "$output" | cut -f1 -d ' ')
+	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	sleep 1
 
 	# Send sigint to sysdig and wait for it to exit
@@ -100,12 +99,12 @@ run_sysdig() {
 	sync
 
 	# extract the number of events from the read verbose output
-	sysdig_output=$(sysdig -r $tmp_file -v 2>&1 >/dev/null)
+	sysdig_output=$(sysdig -r "$tmp_file" -v 2>&1 >/dev/null)
 
-	nb_events=$(echo $sysdig_output |grep 'Elapsed'|awk '{print $10}'|sed 's/,//g')
-	discard_events=$(echo $sysdig_output |grep 'Drops' | awk '{print $4}' | cut -f2 -d:)
-	echo $sysdig_output | grep 'Driver'
-	rm $tmp_file
+	nb_events=$(echo "$sysdig_output" |grep 'Elapsed'|awk '{print $10}'|sed 's/,//g')
+	discard_events=$(echo "$sysdig_output" |grep 'Drops' | awk '{print $4}' | cut -f2 -d:)
+	echo "$sysdig_output" | grep 'Driver'
+	rm "$tmp_file"
 }
 
 drop_caches() {
@@ -129,8 +128,8 @@ for nthreads in 1 2 4 8 16; do
 			        # and discard the results
 				for i in $(seq 1 5); do
 					run_$tracer $tcase $cpuaffinity $nthreads $sleep_time
-					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem >> $file_output
-					echo $tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem
+					echo "$tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem" >> $file_output
+					echo "$tcase,$tracer,$i,$sleep_time,$cpuaffinity,$nthreads,$duration,$tot_nb_iter,$nb_events,$discard_events,$max_mem"
 					sleep 1
 				done
 			done
