@@ -31,7 +31,7 @@ struct thread_arg {
 void set_cpu_affinity(int thread_no)
 {
 	cpu_set_t set;
-	int cpu = 0;
+	int cpu = 0, ret = 0;
 
 	/*
 	 * This code spreads the threads on all the NUMA nodes available on the
@@ -49,7 +49,10 @@ void set_cpu_affinity(int thread_no)
 	CPU_ZERO(&set);
 	CPU_SET(cpu, &set);
 
-	sched_setaffinity(0, sizeof(set), &set);
+	ret = sched_setaffinity(0, sizeof(set), &set);
+	if (ret == -1) {
+		perror("sched_setaffinity");
+	}
 }
 
 
