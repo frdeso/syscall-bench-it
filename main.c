@@ -46,6 +46,7 @@ void set_cpu_affinity(int thread_no)
 
 	cpu = (thread_no / nb_numa_nodes) + ((thread_no % nb_numa_nodes) * nb_cores_per_nodes);
 
+	CPU_ZERO(&set);
 	CPU_SET(cpu, &set);
 
 	sched_setaffinity(0, sizeof(set), &set);
