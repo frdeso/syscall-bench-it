@@ -28,7 +28,7 @@ struct thread_arg {
 	int t_no;
 };
 
-void set_cpu_affinity(int thread_no)
+int set_cpu_affinity(int thread_no)
 {
 	cpu_set_t set;
 	int cpu = 0, ret = 0;
@@ -52,7 +52,9 @@ void set_cpu_affinity(int thread_no)
 	ret = sched_setaffinity(0, sizeof(set), &set);
 	if (ret == -1) {
 		perror("sched_setaffinity");
+		return ret;
 	}
+	return 0;
 }
 
 
@@ -68,13 +70,16 @@ static void *failing_open_thr(void *a)
 	thread_no = (int) arg->t_no;
 
 	if (cpu_affinity_enabled) {
-		set_cpu_affinity(thread_no);
+		ret = set_cpu_affinity(thread_no);
+		if (ret != 0) {
+			exit(ret);
+		}
 	}
 
 	/* Post on the semaphore to tell main this thread is ready to go */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 
@@ -93,7 +98,7 @@ static void *failing_open_thr(void *a)
 	/* Post on the semaphore to tell main this thread is done */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 	return (void*)1;
@@ -111,7 +116,10 @@ static void *open_dup_close_thr(void *a)
 	thread_no = (int) arg->t_no;
 
 	if (cpu_affinity_enabled) {
-		set_cpu_affinity(thread_no);
+		ret = set_cpu_affinity(thread_no);
+		if (ret != 0) {
+			exit(ret);
+		}
 	}
 
 	fd = open(path, O_RDONLY);
@@ -119,7 +127,7 @@ static void *open_dup_close_thr(void *a)
 	/* Post on the semaphore to tell main this thread is ready to go */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 
@@ -139,7 +147,7 @@ static void *open_dup_close_thr(void *a)
 	/* Post on the semaphore to tell main this thread is done */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 	return (void*)1;
@@ -156,13 +164,16 @@ static void *failing_close_thr(void *a)
 	thread_no = (int) arg->t_no;
 
 	if (cpu_affinity_enabled) {
-		set_cpu_affinity(thread_no);
+		ret = set_cpu_affinity(thread_no);
+		if (ret != 0) {
+			exit(ret);
+		}
 	}
 
 	/* Post on the semaphore to tell main this thread is ready to go */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 
@@ -181,7 +192,7 @@ static void *failing_close_thr(void *a)
 	/* Post on the semaphore to tell main this thread is done */
 	ret = sem_post(&sem_thr);
 	if (ret == -1) {
-		printf("sem_post error\n");
+		perror("sem_post");
 		exit(-1);
 	}
 
@@ -266,7 +277,7 @@ int main(int argc, char *argv[])
 
 	ret = sem_init(&sem_thr, 0, 0);
 	if (ret == -1) {
-		printf("sem_init error\n");
+		perror("sem_init");
 		exit(-1);
 	}
 
@@ -284,7 +295,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < num_threads; i++) {
 		ret = sem_wait(&sem_thr);
 		if (ret == -1) {
-			printf("sem_wait error\n");
+			perror("sem_wait");
 			exit(-1);
 		}
 	}
@@ -292,7 +303,7 @@ int main(int argc, char *argv[])
 	/* Record the before timestamp */
 	ret = gettimeofday(&tval_before, NULL);
 	if (ret == -1) {
-		printf("gettimeofday error\n");
+		perror("gettimeofday");
 		exit(-1);
 	}
 
@@ -307,7 +318,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < num_threads; i++) {
 		ret = sem_wait(&sem_thr);
 		if (ret == -1) {
-			printf("sem_wait error\n");
+			perror("sem_wait");
 			exit(-1);
 		}
 	}
@@ -315,7 +326,7 @@ int main(int argc, char *argv[])
 	/* Record the after timestamp */
 	gettimeofday(&tval_after, NULL);
 	if (ret == -1) {
-		printf("gettimeofday error\n");
+		perror("gettimeofday");
 		exit(-1);
 	}
 
@@ -334,7 +345,7 @@ int main(int argc, char *argv[])
 
 	ret = sem_destroy(&sem_thr);
 	if (ret == -1) {
-		printf("sem_destroy error\n");
+		perror("sem_destroy");
 		exit(-1);
 	}
 
