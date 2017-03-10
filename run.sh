@@ -18,8 +18,8 @@ run_baseline() {
 	nbThreads=$3
 	sleepTime=$4
         #run the testcase twice to warm the cache
-	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
-	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
+	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 	duration=$(echo "$output" | cut -f1 -d ' ')
 	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	nb_events="na"
@@ -48,9 +48,9 @@ run_lttng() {
 	lttng enable-event -k --syscall --all --channel my_channel
 	lttng start
 	# we run the testcase twice to ensure the tracer's and testcase's pages are warm
-	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 
-	output=$(./$testcase $cpu_affinity $nbThreads $sleepTime)
+	output=$(taskset -c 0 ./$testcase $cpu_affinity $nbThreads $sleepTime)
 	duration=$(echo "$output" | cut -f1 -d ' ')
 	tot_nb_iter=$(echo "$output" | cut -f2 -d ' ')
 	discard_events=$(lttng stop | grep 'warning' | awk '{print $2}')
