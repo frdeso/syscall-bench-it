@@ -199,6 +199,71 @@ static void *failing_close_thr(void *a)
 	return (void*)1;
 }
 
+static void *lttng_test_filter_thr(void *a)
+{
+	int thread_no, ret;
+	int fd;
+	unsigned long nb_iter = 0;
+	struct thread_arg *arg;
+	ssize_t write_ret;
+
+	/*
+	 * string sent to the proc file, it represents the number of loop the
+	 * lttng_test module should generate
+	 */
+	const char * nb_event_per_call = "1\0";
+	size_t event_str_len = strnlen(nb_event_per_call, 16);
+
+	arg = (struct thread_arg *) a;
+	thread_no = (int) arg->t_no;
+
+	if (cpu_affinity_enabled) {
+		ret = set_cpu_affinity(thread_no);
+		if (ret != 0) {
+			exit(ret);
+		}
+	}
+
+	fd = open("/proc/lttng-test-filter-event", O_WRONLY);
+	if (fd  == -1) {
+		perror("fopen");
+		exit(-1);
+	}
+	/* Post on the semaphore to tell main this thread is ready to go */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		perror("sem_post");
+		exit(-1);
+	}
+
+	while (!test_go) {
+		/* loop until the variable is set by main to start looping */
+	}
+
+	while (!test_stop) {
+		/* Will fail since the fd is invalid */
+		write_ret = write(fd, nb_event_per_call, event_str_len);
+		if (write_ret != event_str_len) {
+			printf("write returned %lu, when expected is %lu\n", write_ret, event_str_len);
+			exit(-1);
+		}
+		nb_iter++;
+	}
+
+	tot_nr_iter_per_thread[thread_no] = nb_iter;
+
+	close(fd);
+
+	/* Post on the semaphore to tell main this thread is done */
+	ret = sem_post(&sem_thr);
+	if (ret == -1) {
+		perror("sem_post");
+		exit(-1);
+	}
+
+	return (void*)1;
+}
+
 int main(int argc, char *argv[])
 {
 	int i, ret;
@@ -252,6 +317,10 @@ int main(int argc, char *argv[])
 
 #ifdef FAILING_CLOSE
 	func = &failing_close_thr;
+#endif
+
+#ifdef LTTNG_TEST_FILTER
+	func = &lttng_test_filter_thr;
 #endif
 
 	tids = calloc(num_threads, sizeof(*tids));
