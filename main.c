@@ -7,6 +7,7 @@
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -259,6 +260,11 @@ void failing_close_run(void *arg)
 	close(-1);
 }
 
+void failing_ioctl_run(void *arg)
+{
+	ioctl(-1, 0);
+}
+
 int main(int argc, char *argv[])
 {
 	int i, ret;
@@ -332,6 +338,14 @@ int main(int argc, char *argv[])
 			.exit	= nil,
 		};
 #endif /* FAILING_CLOSE */
+#ifdef FAILING_IOCTL
+	struct testcase_cbs cbs =
+		{
+			.init	= nil,
+			.run	= failing_ioctl_run,
+			.exit	= nil,
+		};
+#endif /* FAILING_IOCTL */
 
 #ifdef LTTNG_TEST_FILTER
 	dat = "/proc/lttng-test-filter-event";
