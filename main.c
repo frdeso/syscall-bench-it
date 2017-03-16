@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -174,7 +175,7 @@ void lttng_test_filter_run(void *arg)
 	unsigned long write_ret;
 
 	/* Write the string containing the number of events to be generated */
-	write_ret = write(lpd->fd, lpd->nb_event_per_call, lpd->event_str_len);
+	write_ret = syscall(__NR_write, lpd->fd, lpd->nb_event_per_call, lpd->event_str_len);
 	if (write_ret != lpd->event_str_len) {
 		printf("write returned %lu, when expected is %lu\n", write_ret, lpd->event_str_len);
 		exit(-1);
@@ -215,7 +216,7 @@ void open_init(void *arg)
 void open_run(void *arg)
 {
 	struct open_priv_data *opd = (struct open_priv_data*) arg;
-	int fd = open(opd->path, O_RDONLY);
+	int fd = syscall(__NR_open, opd->path, O_RDONLY);
 }
 
 void open_exit(void *arg)
@@ -244,8 +245,8 @@ void dup_close_run(void *arg)
 {
 	struct open_priv_data *opd = (struct open_priv_data*) arg;
 	int new_fd;
-	new_fd = dup(opd->fd);
-	close(new_fd);
+	new_fd = syscall(__NR_dup, opd->fd);
+	syscall(__NR_close, new_fd);
 }
 
 void dup_close_exit(void *arg)
@@ -257,12 +258,12 @@ void dup_close_exit(void *arg)
 
 void failing_close_run(void *arg)
 {
-	close(-1);
+	syscall(__NR_close, -1);
 }
 
 void failing_ioctl_run(void *arg)
 {
-	ioctl(-1, 0);
+	syscall(__NR_ioctl, -1, 0);
 }
 
 int main(int argc, char *argv[])
