@@ -265,6 +265,10 @@ void failing_ioctl_run(void *arg)
 {
 	syscall(__NR_ioctl, -1, 0);
 }
+void raw_syscall_getpid_run(void *arg)
+{
+	syscall(__NR_getpid);
+}
 
 int main(int argc, char *argv[])
 {
@@ -355,6 +359,14 @@ int main(int argc, char *argv[])
 			.init	= lttng_test_filter_init,
 			.run	= lttng_test_filter_run,
 			.exit	= lttng_test_filter_exit,
+		};
+#endif
+#ifdef RAW_SYSCALL_GETPID
+	struct testcase_cbs cbs =
+		{
+			.init	= nil,
+			.run	= raw_syscall_getpid_run,
+			.exit	= nil,
 		};
 #endif
 
