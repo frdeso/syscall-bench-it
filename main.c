@@ -23,11 +23,6 @@ sem_t sem_thr;
 int num_threads;
 int cpu_affinity_enabled;
 
-struct thread_arg {
-	void *dat;
-	int t_no;
-};
-
 int set_cpu_affinity(int thread_no)
 {
 	cpu_set_t set;
@@ -57,17 +52,42 @@ int set_cpu_affinity(int thread_no)
 	return 0;
 }
 
+/*
+ * Every testcase has to define 3 callbacks; init, run and exit.
+ * - The init function is called once at the beginning of the testcase
+ * - The run function is called in loop and contains the event we want to record
+ * on with the tracer.
+ * - The exit function is run at teardown
+ * If a testcase does not need an init or exit function it can use the `nil()`
+ * function.
+ */
+struct thread_arg {
+	void *dat;
+	int t_no;
+	void *priv_data;
+};
 
-static void *failing_open_thr(void *a)
+struct testcase_cbs {
+	void (*init)(void *thr);
+	void (*run)(void *priv);
+	void (*exit)(void *priv);
+	struct thread_arg *thr_arg;
+};
+
+/*
+ * Function is ran by the threads. It receives the testcase defined in a
+ * struct testcase_cbs which contains the init,run and exit callbacks.
+ */
+static void *run_testcase(void *arg)
 {
 	int fd, thread_no, ret;
-	struct thread_arg *arg;
+	struct thread_arg *thr_arg;
 	char *path;
 	unsigned long nb_iter = 0;
 
-	arg = (struct thread_arg *) a;
-	path = (char *) arg->dat;
-	thread_no = (int) arg->t_no;
+	struct testcase_cbs *cbs = (struct testcase_cbs *) arg;
+	thr_arg = (struct thread_arg *) cbs->thr_arg;
+	thread_no = (int) thr_arg->t_no;
 
 	if (cpu_affinity_enabled) {
 		ret = set_cpu_affinity(thread_no);
@@ -75,6 +95,9 @@ static void *failing_open_thr(void *a)
 			exit(ret);
 		}
 	}
+
+	/* Call the init function of the test case */
+	cbs->init(thr_arg);
 
 	/* Post on the semaphore to tell main this thread is ready to go */
 	ret = sem_post(&sem_thr);
@@ -87,13 +110,16 @@ static void *failing_open_thr(void *a)
 		/* loop until the variable is set by main to start looping */
 	}
 
+	/* Call the run function of the test case */
 	while (!test_stop) {
-		/* Will fail with ENOENT/EFAULT since the file does not exist */
-		fd = open(path, O_RDONLY);
+		cbs->run(thr_arg->priv_data);
 		nb_iter++;
 	}
 
 	tot_nr_iter_per_thread[thread_no] = nb_iter;
+
+	/* Call the exit function of the test case */
+	cbs->exit(thr_arg->priv_data);
 
 	/* Post on the semaphore to tell main this thread is done */
 	ret = sem_post(&sem_thr);
@@ -104,164 +130,133 @@ static void *failing_open_thr(void *a)
 	return (void*)1;
 }
 
-static void *open_dup_close_thr(void *a)
-{
-	int fd, new_fd, thread_no, ret;
-	struct thread_arg *arg;
-	char *path;
-	unsigned long nb_iter = 0;
+void nil() {}
 
-	arg = (struct thread_arg *) a;
-	path = (char *) arg->dat;
-	thread_no = (int) arg->t_no;
-
-	if (cpu_affinity_enabled) {
-		ret = set_cpu_affinity(thread_no);
-		if (ret != 0) {
-			exit(ret);
-		}
-	}
-
-	fd = open(path, O_RDONLY);
-
-	/* Post on the semaphore to tell main this thread is ready to go */
-	ret = sem_post(&sem_thr);
-	if (ret == -1) {
-		perror("sem_post");
-		exit(-1);
-	}
-
-	while (!test_go) {
-		/* loop until the variable is set by main to start looping */
-	}
-
-	while (!test_stop) {
-		new_fd = dup(fd);
-		close(new_fd);
-		nb_iter++;
-	}
-
-	tot_nr_iter_per_thread[thread_no] = nb_iter;
-
-	close(fd);
-	/* Post on the semaphore to tell main this thread is done */
-	ret = sem_post(&sem_thr);
-	if (ret == -1) {
-		perror("sem_post");
-		exit(-1);
-	}
-	return (void*)1;
-}
-
-static void *failing_close_thr(void *a)
-{
-	int thread_no, ret;
-	int fd = -1;
-	unsigned long nb_iter = 0;
-	struct thread_arg *arg;
-
-	arg = (struct thread_arg *) a;
-	thread_no = (int) arg->t_no;
-
-	if (cpu_affinity_enabled) {
-		ret = set_cpu_affinity(thread_no);
-		if (ret != 0) {
-			exit(ret);
-		}
-	}
-
-	/* Post on the semaphore to tell main this thread is ready to go */
-	ret = sem_post(&sem_thr);
-	if (ret == -1) {
-		perror("sem_post");
-		exit(-1);
-	}
-
-	while (!test_go) {
-		/* loop until the variable is set by main to start looping */
-	}
-
-	while (!test_stop) {
-		/* Will fail since the fd is invalid */
-		close(fd);
-		nb_iter++;
-	}
-
-	tot_nr_iter_per_thread[thread_no] = nb_iter;
-
-	/* Post on the semaphore to tell main this thread is done */
-	ret = sem_post(&sem_thr);
-	if (ret == -1) {
-		perror("sem_post");
-		exit(-1);
-	}
-
-	return (void*)1;
-}
-
-static void *lttng_test_filter_thr(void *a)
-{
-	int thread_no, ret;
+struct lttng_test_filter_priv_data {
 	int fd;
-	unsigned long nb_iter = 0;
-	struct thread_arg *arg;
-	ssize_t write_ret;
+	char *nb_event_per_call;
+	unsigned long event_str_len;
+};
 
-	/*
-	 * string sent to the proc file, it represents the number of loop the
-	 * lttng_test module should generate
-	 */
-	const char * nb_event_per_call = "1\0";
-	size_t event_str_len = strnlen(nb_event_per_call, 16);
-
-	arg = (struct thread_arg *) a;
-	thread_no = (int) arg->t_no;
-
-	if (cpu_affinity_enabled) {
-		ret = set_cpu_affinity(thread_no);
-		if (ret != 0) {
-			exit(ret);
-		}
+void lttng_test_filter_init(void *arg)
+{
+	struct thread_arg *thr_arg = (struct thread_arg*)arg;
+	struct lttng_test_filter_priv_data *priv_data = malloc(sizeof(struct lttng_test_filter_priv_data));
+	if (priv_data == NULL) {
+		printf("malloc error\n");
+		exit(-1);
 	}
 
-	fd = open("/proc/lttng-test-filter-event", O_WRONLY);
-	if (fd  == -1) {
+	char *path = (char *) thr_arg->dat;
+
+	priv_data->nb_event_per_call = malloc(sizeof(char) * 16);
+	if (priv_data->nb_event_per_call == NULL) {
+		printf("malloc error\n");
+		exit(-1);
+	}
+
+	/* Create a string to generate 1 event */
+	strncpy(priv_data->nb_event_per_call, "1\0", 16);
+	priv_data->event_str_len = sizeof('\0') + strnlen(priv_data->nb_event_per_call, 16);
+
+	priv_data->fd = open(path, O_WRONLY);
+	if (priv_data->fd  == -1) {
 		perror("fopen");
 		exit(-1);
 	}
-	/* Post on the semaphore to tell main this thread is ready to go */
-	ret = sem_post(&sem_thr);
+	thr_arg->priv_data = priv_data;
+}
+
+void lttng_test_filter_run(void *arg)
+{
+	struct lttng_test_filter_priv_data *lpd = (struct lttng_test_filter_priv_data *)arg;
+	unsigned long write_ret;
+
+	/* Write the string containing the number of events to be generated */
+	write_ret = write(lpd->fd, lpd->nb_event_per_call, lpd->event_str_len);
+	if (write_ret != lpd->event_str_len) {
+		printf("write returned %lu, when expected is %lu\n", write_ret, lpd->event_str_len);
+		exit(-1);
+	}
+}
+
+void lttng_test_filter_exit(void *arg)
+{
+	int ret;
+	struct lttng_test_filter_priv_data *lpd = (struct lttng_test_filter_priv_data *)arg;
+
+	ret = close(lpd->fd);
 	if (ret == -1) {
-		perror("sem_post");
+		perror("close");
+		exit(-1);
+	}
+	free(lpd->nb_event_per_call);
+	free(lpd);
+}
+
+struct open_priv_data {
+	int fd;
+	char *path;
+};
+
+void open_init(void *arg)
+{
+	struct thread_arg *thr_arg = (struct thread_arg*)arg;
+	struct open_priv_data *priv_data;
+	priv_data = malloc(sizeof(struct open_priv_data));
+	if (priv_data == NULL) {
+		printf("malloc error\n");
+		exit(-1);
+	}
+	thr_arg->priv_data = priv_data;
+}
+
+void open_run(void *arg)
+{
+	struct open_priv_data *opd = (struct open_priv_data*) arg;
+	int fd = open(opd->path, O_RDONLY);
+}
+
+void open_exit(void *arg)
+{
+	free(arg);
+}
+
+void dup_close_init(void *arg)
+{
+	struct thread_arg *thr_arg = (struct thread_arg*)arg;
+	struct open_priv_data *priv_data;
+
+	char *path = (char *)thr_arg->dat;
+
+	priv_data = malloc(sizeof(struct open_priv_data));
+	if (priv_data == NULL) {
+		printf("malloc error\n");
 		exit(-1);
 	}
 
-	while (!test_go) {
-		/* loop until the variable is set by main to start looping */
-	}
+	priv_data->fd = open(path, O_RDONLY);
+	thr_arg->priv_data = priv_data;
+}
 
-	while (!test_stop) {
-		/* Will fail since the fd is invalid */
-		write_ret = write(fd, nb_event_per_call, event_str_len);
-		if (write_ret != event_str_len) {
-			printf("write returned %lu, when expected is %lu\n", write_ret, event_str_len);
-			exit(-1);
-		}
-		nb_iter++;
-	}
+void dup_close_run(void *arg)
+{
+	struct open_priv_data *opd = (struct open_priv_data*) arg;
+	int new_fd;
+	new_fd = dup(opd->fd);
+	close(new_fd);
+}
 
-	tot_nr_iter_per_thread[thread_no] = nb_iter;
+void dup_close_exit(void *arg)
+{
+	struct open_priv_data *opd = (struct open_priv_data*) arg;
+	close(opd->fd);
+	free(opd);
+}
 
-	close(fd);
-
-	/* Post on the semaphore to tell main this thread is done */
-	ret = sem_post(&sem_thr);
-	if (ret == -1) {
-		perror("sem_post");
-		exit(-1);
-	}
-
-	return (void*)1;
+void failing_close_run(void *arg)
+{
+	close(-1);
 }
 
 int main(int argc, char *argv[])
@@ -273,7 +268,7 @@ int main(int argc, char *argv[])
 	void *tret;
 	struct timeval tval_before, tval_after, tval_result;
 	struct timespec sleep_duration;
-	struct thread_arg *args;
+	struct testcase_cbs *args;
 	char *dat;
 	pthread_t *tids;
 	/* Declare the function pointer that we use to define the testcase */
@@ -302,25 +297,50 @@ int main(int argc, char *argv[])
 
 #ifdef FAILING_OPEN_NULL
 	dat = NULL;
-	func = &failing_open_thr;
-#endif
+	struct testcase_cbs cbs =
+		{
+			.init	= open_init,
+			.run	= open_run,
+			.exit	= open_exit,
+		};
+#endif /* FAILING_OPEN_NULL */
 
 #ifdef FAILING_OPEN_NEXIST
 	dat = "/path/to/file";
-	func = &failing_open_thr;
-#endif
+	struct testcase_cbs cbs =
+		{
+			.init	= open_init,
+			.run	= open_run,
+			.exit	= open_exit,
+		};
+#endif /* FAILING_OPEN_NEXIST */
 
 #ifdef SUCCESS_DUP_CLOSE
 	dat = "/etc/passwd";
-	func = &open_dup_close_thr;
-#endif
-
+	struct testcase_cbs cbs =
+		{
+			.init	= dup_close_init,
+			.run	= dup_close_run,
+			.exit	= dup_close_exit,
+		};
+#endif /* SUCCESS_DUP_CLOSE */
 #ifdef FAILING_CLOSE
-	func = &failing_close_thr;
-#endif
+	struct testcase_cbs cbs =
+		{
+			.init	= nil,
+			.run	= failing_close_run,
+			.exit	= nil,
+		};
+#endif /* FAILING_CLOSE */
 
 #ifdef LTTNG_TEST_FILTER
-	func = &lttng_test_filter_thr;
+	dat = "/proc/lttng-test-filter-event";
+	struct testcase_cbs cbs =
+		{
+			.init	= lttng_test_filter_init,
+			.run	= lttng_test_filter_run,
+			.exit	= lttng_test_filter_exit,
+		};
 #endif
 
 	tids = calloc(num_threads, sizeof(*tids));
@@ -329,7 +349,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	args = calloc(num_threads, sizeof(struct thread_arg));
+	args = calloc(num_threads, sizeof(struct testcase_cbs));
 	if (args == NULL) {
 		printf("calloc error\n");
 		exit(-1);
@@ -351,9 +371,15 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < num_threads; i++) {
-		args[i].t_no = i;
-		args[i].dat = dat;
-		ret = pthread_create(&tids[i], NULL, func, &args[i]);
+		args[i] = cbs;
+		args[i].thr_arg = malloc(sizeof(struct thread_arg));
+		if (args[i].thr_arg == NULL) {
+			printf("calloc error\n");
+			exit(-1);
+		}
+		args[i].thr_arg->t_no = i;
+		args[i].thr_arg->dat = dat;
+		ret = pthread_create(&tids[i], NULL, &run_testcase, &args[i]);
 		if (ret != 0 ) {
 			printf("pthread_create error: %d\n", ret);
 			exit(-1);
@@ -401,6 +427,7 @@ int main(int argc, char *argv[])
 
 	for (i = 0; i < num_threads; i++) {
 		ret = pthread_join(tids[i], &tret);
+		free(args[i].thr_arg);
 		if (ret != 0) {
 			printf("pthread_join error\n");
 			exit(-1);
